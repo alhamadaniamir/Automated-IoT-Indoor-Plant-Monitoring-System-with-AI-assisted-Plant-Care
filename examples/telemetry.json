@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "source": "simulator",
+  "device_id": "demo-esp32-01",
+  "plant_id": "plant-01",
+  "recorded_at": "2026-10-15T08:00:00.000Z",
+  "soil_moisture_pct": 48,
+  "pump_running": false,
+  "faults": []
+}

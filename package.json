@@ -1,0 +1,11 @@
+{
+  "name": "automated-iot-indoor-plant-monitoring-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Responsive plant monitoring prototype and ESP32 project foundation.",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --bind 127.0.0.1 --directory dist",
+    "check": "node --check dist/app.js && node --check dist/telemetry.js"
+  }
+}

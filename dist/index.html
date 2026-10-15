@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#244a35">
+  <meta name="description" content="An indoor plant monitoring dashboard for a proposed ESP32 system with automated watering and AI-assisted care.">
+  <title>Indoor Plant Care · Monitoring dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to dashboard</a>
+  <header class="header">
+    <a class="brand" href="#overview"><span class="brand-icon" aria-hidden="true">⌁</span><span>Indoor Plant Care<small>MONITOR · UNDERSTAND · GROW</small></span></a>
+    <nav aria-label="Main navigation"><a href="#overview">Overview</a><a href="#care">Plant care</a><a href="#project">Project</a></nav>
+    <span class="prototype"><span class="dot"></span> Prototype</span>
+  </header>
+  <main id="main">
+    <section class="intro" id="overview">
+      <div><p class="eyebrow">YOUR INDOOR GARDEN</p><h1>A closer look at your plant.</h1><p class="subheading">Follow soil conditions, understand watering, and build a healthier growing routine.</p></div>
+      <button class="button secondary" id="edit-profile">Edit plant profile <span aria-hidden="true">↗</span></button>
+    </section>
+    <div class="demo-banner"><span><strong>Demo mode</strong> · Sample readings only. No ESP32 is connected.</span><span class="banner-detail">Your hardware connection comes next.</span></div>
+    <section class="garden-layout" aria-label="Plant overview">
+      <article class="plant-card">
+        <div class="plant-art" aria-hidden="true">
+          <svg viewBox="0 0 280 280"><defs><linearGradient id="leaf" x2="1" y2="1"><stop stop-color="#62866a"/><stop offset="1" stop-color="#264b36"/></linearGradient></defs><ellipse cx="142" cy="251" rx="76" ry="10" fill="#294a3415"/><path d="M143 194 Q139 123 151 61 M143 169 Q114 123 85 99 M144 153 Q175 119 202 109" fill="none" stroke="#59705a" stroke-width="5"/><path d="M151 119 Q104 70 159 30 Q191 84 151 119 M122 146 Q62 149 57 78 Q120 79 122 146 M160 154 Q159 99 223 87 Q231 149 160 154 M140 180 Q89 188 80 143 Q126 132 140 180" fill="url(#leaf)"/><path d="M151 109 L159 47 M112 134 L69 91 M170 143 L211 101" fill="none" stroke="#a6b6a0" stroke-width="1.5"/><path d="M99 191 L185 191 L175 241 Q142 254 109 241 Z" fill="#bd8569"/><path d="M98 191 L187 191 L187 202 L98 202 Z" fill="#d29b7d"/><path d="M112 207 L119 237" stroke="#e2b79d" stroke-width="4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="plant-meta"><p class="eyebrow">PLANT 01</p><h2 id="plant-name">My indoor plant</h2><p id="plant-species">Species not selected</p><span class="pill" id="plant-condition">Sample profile</span></div>
+      </article>
+      <div class="readings-area">
+        <div class="section-heading"><div><p class="eyebrow">LATEST SAMPLE</p><h2>Growing conditions</h2></div><button class="text-button" id="refresh">Refresh sample ↻</button></div>
+        <div class="metrics">
+          <article class="metric"><span class="metric-label">Soil moisture <span aria-hidden="true">◒</span></span><p class="metric-value" id="moisture">—</p><div class="meter" role="meter" aria-label="Sample soil moisture" aria-valuemin="0" aria-valuemax="100" id="moisture-meter"><span id="moisture-bar"></span></div><p id="moisture-note">Calibrate before connecting a sensor</p></article>
+          <article class="metric"><span class="metric-label">Water pump <span aria-hidden="true">♧</span></span><p class="metric-value word">Off</p><p class="metric-caption">No device connected</p><p>Watering controls are planned</p></article>
+          <article class="metric"><span class="metric-label">Last sample <span aria-hidden="true">◷</span></span><p class="metric-value time" id="last-sample">—</p><p class="metric-caption">Updated when you refresh</p><p>Times shown in your local timezone</p></article>
+          <article class="metric"><span class="metric-label">Device connection <span aria-hidden="true">⌁</span></span><p class="metric-value word">Demo</p><p class="metric-caption">ESP32 connection planned</p><p>Capacitive sensor + relay + pump</p></article>
+        </div>
+      </div>
+    </section>
+    <section class="detail-layout">
+      <article class="panel trend-panel">
+        <div class="section-heading"><div><p class="eyebrow">A LITTLE HISTORY</p><h2>Soil moisture trend</h2></div><span class="muted">Last 12 demo samples</span></div>
+        <div class="chart" role="img" id="trend-chart" aria-label="Sample soil moisture history"><div class="chart-labels"><span>100%</span><span>50%</span><span>0%</span></div><svg viewBox="0 0 600 170" preserveAspectRatio="none" aria-hidden="true"><path class="grid" d="M0 10 H600 M0 85 H600 M0 160 H600"/><path id="chart-area" class="chart-area"/><path id="chart-line" class="chart-line"/></svg></div>
+        <div class="chart-footer"><span>Older samples</span><span>Latest</span></div>
+        <div class="scenario-row"><label for="scenario">Try a sample condition</label><select id="scenario"><option value="normal">Normal moisture</option><option value="dry">Dry soil</option><option value="sensor-fault">Sensor unavailable</option></select></div>
+      </article>
+      <article class="panel care-panel" id="care" aria-live="polite">
+        <div class="section-heading"><div><p class="eyebrow">UNDERSTAND YOUR PLANT</p><h2>Care guidance</h2></div><span class="spark" aria-hidden="true">✧</span></div>
+        <span class="pill neutral">Sample advice · AI not connected</span>
+        <h3 id="care-title"></h3><p id="care-message"></p>
+        <div class="care-footnote">This preview uses simple moisture rules. Plant-specific AI advice will be added after sensor data is available.</div>
+      </article>
+    </section>
+    <section class="panel project-panel" id="project">
+      <div class="section-heading"><div><p class="eyebrow">FROM PROTOTYPE TO PLANT CARE</p><h2>Your project, growing in stages.</h2></div><button class="button secondary" id="export">Export demo readings ↓</button></div>
+      <ol class="milestones"><li class="current"><span>01</span><h3>Web dashboard</h3><p>Explore sample soil readings and care guidance.</p><small>Current prototype</small></li><li><span>02</span><h3>Connect ESP32</h3><p>Calibrate the moisture sensor and send real readings.</p><small>Planned</small></li><li><span>03</span><h3>Automate watering</h3><p>Use the relay and pump with local watering limits.</p><small>Planned</small></li><li><span>04</span><h3>AI-assisted care</h3><p>Explain trends using the plant profile and history.</p><small>Planned</small></li></ol>
+    </section>
+    <footer><span>Automated IoT Indoor Plant Monitoring System</span><span>Built to grow, one step at a time.</span></footer>
+  </main>
+  <dialog id="profile-dialog" aria-labelledby="profile-title">
+    <form id="profile-form"><p class="eyebrow">MAKE IT YOURS</p><h2 id="profile-title">Plant profile</h2><label for="profile-name">Plant name<input id="profile-name" name="name" maxlength="60" required></label><label for="profile-species">Species (optional)<input id="profile-species" name="species" maxlength="80" placeholder="e.g. pothos"></label><label for="profile-threshold">Demo dry-soil threshold (%)<input id="profile-threshold" name="threshold" type="number" min="1" max="99" step="1" required></label><p class="muted">Saved in this browser only. This demo threshold does not control a pump and must be calibrated for your plant and sensor.</p><div class="dialog-actions"><button class="button secondary" type="button" id="cancel-profile">Cancel</button><button class="button" type="submit">Save profile</button></div><p class="muted" id="storage-message" role="status"></p></form>
+  </dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

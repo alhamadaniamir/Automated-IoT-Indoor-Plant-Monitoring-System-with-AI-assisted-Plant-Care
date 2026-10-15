@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Plant telemetry v1",
+  "description": "Initial payload contract. Production ingestion, replay protection, and clock handling are not implemented yet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "device_id", "plant_id", "recorded_at", "soil_moisture_pct", "pump_running", "faults"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "source": { "enum": ["simulator", "device"] },
+    "device_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "plant_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "soil_moisture_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "pump_running": { "type": "boolean" },
+    "faults": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  }
+}
