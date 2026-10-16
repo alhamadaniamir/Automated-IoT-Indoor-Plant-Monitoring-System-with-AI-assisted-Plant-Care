@@ -1,12 +1,15 @@
 # Project roadmap
 
-## 1. Repository and web prototype — completed
+## 1. Repository and mobile app preview — in progress
 
 - [x] Separate project repository.
-- [x] Responsive dashboard using demo soil moisture readings.
-- [x] Browser-local plant profile and demo threshold.
-- [x] Sample dry-soil and missing-sensor conditions.
-- [x] JSON export and initial telemetry contract.
+- [x] Create the Flutter app foundation and mobile dashboard preview.
+- [x] Add sample plant status, sensor cards, care insight, activity, and demo watering interaction.
+- [x] Keep the earlier browser prototype as a reference, not the primary app.
+- [x] Define the initial telemetry contract.
+- [ ] Replace sample readings with a typed data model and local demo repository.
+- [ ] Add plant profile, history chart, and settings screens.
+- [ ] Add backend API and AI service integration.
 - [x] Architecture and hardware implementation notes.
 
 ## 2. Hardware and sensor firmware
