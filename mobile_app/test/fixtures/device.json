@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "source": "device",
+  "device_id": "plantcare-test",
+  "boot_id": "boot-test",
+  "sample_sequence": 2,
+  "sample_age_ms": 200,
+  "pump_outputs_enabled": false,
+  "clock_synced": true,
+  "plants": [
+    {
+      "id": 1,
+      "species": "pothos",
+      "sensor_pin": 15,
+      "relay_pin": 37,
+      "soil_raw": 2700,
+      "soil_moisture_pct": null,
+      "calibrated": false,
+      "pump_running": null,
+      "faults": [],
+      "schedule_enabled": false,
+      "schedule_hour": 8,
+      "schedule_minute": 0,
+      "watering_seconds": 3
+    },
+    {
+      "id": 2,
+      "species": "snake_plant",
+      "sensor_pin": 16,
+      "relay_pin": 36,
+      "soil_raw": 1800,
+      "soil_moisture_pct": null,
+      "calibrated": false,
+      "pump_running": null,
+      "faults": [],
+      "schedule_enabled": false,
+      "schedule_hour": 8,
+      "schedule_minute": 0,
+      "watering_seconds": 3
+    },
+    {
+      "id": 3,
+      "species": "peace_lily",
+      "sensor_pin": 17,
+      "relay_pin": 35,
+      "soil_raw": 0,
+      "soil_moisture_pct": null,
+      "calibrated": false,
+      "pump_running": null,
+      "faults": [
+        "adc_saturated"
+      ],
+      "schedule_enabled": false,
+      "schedule_hour": 8,
+      "schedule_minute": 0,
+      "watering_seconds": 3
+    }
+  ]
+}

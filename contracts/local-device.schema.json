@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlantCare local device telemetry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source",
+    "device_id",
+    "boot_id",
+    "sample_sequence",
+    "sample_age_ms",
+    "pump_outputs_enabled",
+    "clock_synced",
+    "plants"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source": {
+      "const": "device"
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "boot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sample_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sample_age_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "pump_outputs_enabled": {
+      "type": "boolean"
+    },
+    "clock_synced": {
+      "type": "boolean"
+    },
+    "plants": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "species",
+          "sensor_pin",
+          "relay_pin",
+          "soil_raw",
+          "soil_moisture_pct",
+          "calibrated",
+          "pump_running",
+          "faults",
+          "schedule_enabled",
+          "schedule_hour",
+          "schedule_minute",
+          "watering_seconds"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "species": {
+            "enum": [
+              "pothos",
+              "snake_plant",
+              "peace_lily"
+            ]
+          },
+          "sensor_pin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 48
+          },
+          "relay_pin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 48
+          },
+          "soil_raw": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 4095
+          },
+          "soil_moisture_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "calibrated": {
+            "type": "boolean"
+          },
+          "pump_running": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "faults": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "schedule_enabled": {
+            "type": "boolean"
+          },
+          "schedule_hour": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "schedule_minute": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 59
+          },
+          "watering_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "calibrated": {
+                  "const": false
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "soil_moisture_pct": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

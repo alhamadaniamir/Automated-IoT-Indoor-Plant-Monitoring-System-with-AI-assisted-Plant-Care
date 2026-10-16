@@ -1,21 +1,25 @@
 # Project roadmap
 
-## 1. Repository and mobile app preview — in progress
+## 1. Flutter app and local Arduino integration — implemented; physical testing pending
 
 - [x] Separate project repository.
 - [x] Create the Flutter app foundation and mobile dashboard preview.
 - [x] Add sample plant status, sensor cards, care insight, activity, and demo watering interaction.
 - [x] Keep the earlier browser prototype as a reference, not the primary app.
 - [x] Define the initial telemetry contract.
-- [ ] Replace sample readings with a typed data model and local demo repository.
-- [ ] Add plant profile, history chart, and settings screens.
+- [x] Replace sample readings with typed, validated three-channel device telemetry.
+- [x] Simplify the home screen and add species selection, care guides, manual requests, and daily schedule settings.
+- [x] Add Arduino Wi-Fi access point, device settings persistence, and local pump timing limits.
+- [ ] Test the phone-to-board connection and actual wiring/calibration.
+- [ ] Add reading history and charts.
 - [ ] Add backend API and AI service integration.
 - [x] Architecture and hardware implementation notes.
 
 ## 2. Hardware and sensor firmware
 
 - [ ] Confirm board, sensor model, relay polarity, and pump specifications.
-- [ ] Select the first plant species and pot.
+- [x] Select the three starter species: Pothos, snake plant, peace lily.
+- [ ] Confirm their pots and growing medium.
 - [ ] Document wiring for the actual components.
 - [ ] Read raw soil moisture and calibrate the relative percentage.
 - [ ] Implement explicit sensor-fault behavior with pump output disabled.

@@ -1,87 +1,42 @@
 # Automated IoT Indoor Plant Monitoring System
 
-An indoor plant monitoring project with automated watering and planned **AI-assisted Plant Care**.
+Flutter mobile app + ESP32-S3 for three plants: **Pothos, snake plant, and peace lily**. Each channel has a soil sensor and pump relay.
 
-**Chosen approach:** Flutter mobile application + ESP32. The initial hardware scope is a capacitive soil moisture sensor, water pump, and power relay module. Exact board, component models, pump count, and plant species are still to be confirmed.
+## Current implementation
 
-## Current status
+- Simple home screen with three plant cards and connection status.
+- Plant selection, basic care guide, manual Water now requests, and daily schedule settings.
+- Direct connection to the ESP32's password-protected PlantCare Wi-Fi; no cloud account required.
+- Three-channel raw telemetry, calibrated percentages when configured, and explicit stale/fault states.
+- Local firmware runtime limits, cooldown, per-boot watering budget, and soil checks.
+- Saved profiles and schedules on the ESP32. After a restart, the phone must reconnect to set its clock before schedules resume.
 
-This repository contains a Flutter mobile app preview with simulated data, a telemetry contract, and a hardware/backend implementation plan. The earlier browser prototype remains in `dist/` as a reference; the mobile app is now the primary interface.
+The app and sketch can be compiled and tested without a board. Physical wiring, calibration, relay polarity, pump flow, and phone-to-board communication still require testing on your actual hardware. The sketch defaults to monitoring mode with unknown relay GPIOs unconfigured. **AI-generated recommendations are not integrated yet**; the app labels its sourced plant information as a general care guide.
 
-| Component | Status |
-| --- | --- |
-| Flutter mobile dashboard with simulated sensor readings | Implemented |
-| Plant overview, care insight, activity, and demo watering control | Implemented |
-| ESP32 firmware and real sensor ingestion | Planned |
-| Relay/pump control and automatic watering | Planned |
-| Database, authentication, remote access API | Planned |
-| AI care recommendations | Planned; app currently shows a sample insight |
-
-The app does not communicate with hardware or control a pump. Its watering button is a demo interaction. No AI model or paid service is configured.
-
-## Run locally
-
-Run the Flutter mobile app from the repository root:
+## Run on your phone
 
 ```bash
-cd mobile_app
+cd ~/automated-iot-indoor-plant-monitoring-system/mobile_app
 flutter pub get
-flutter run
+flutter devices
+flutter run -d YOUR_PHONE_ID
 ```
 
-The current dashboard uses preview data; sensor telemetry, accounts, backend AI, and real pump control are not connected yet. To check the earlier browser prototype, install Python 3 and run from the repository root:
+Upload `firmware/AutomatedIoTIndoorPlantMonitoringSystem/AutomatedIoTIndoorPlantMonitoringSystem.ino` using Arduino IDE. Open Serial Monitor at **115200 baud**, join the displayed PlantCare network on your phone, and tap **Connect**. Choose to stay connected when Android reports no internet.
 
-```bash
-python3 -m http.server 8080 --bind 127.0.0.1 --directory dist
-```
+See [connection and setup](docs/device-connection.md) for the full steps, calibration, and schedule behavior.
 
-Open **http://127.0.0.1:8080**. Node.js is optional for checking the legacy browser prototype: `npm run check`.
-
-## Proposed system
-
-```mermaid
-flowchart LR
-    Sensor[Capacitive soil moisture sensor] --> Controller[ESP32]
-    Controller --> Relay[Relay module]
-    Relay --> Pump[Water pump]
-    Controller -->|Authenticated HTTPS telemetry| API[Backend API]
-    API --> Database[(Reading history)]
-    Mobile[Flutter mobile app] <-->|Authenticated HTTPS| API
-    API --> Care[AI care service]
-    Care -->|Advice and explanations| Mobile
-```
-
-Automatic watering belongs in the ESP32 controller so it can follow validated local settings without a browser or internet connection. AI will explain readings and suggest care; it will not directly switch the relay. Backend runtime, database, hosting, and AI provider will be selected when those stages begin.
-
-## Repository layout
+## Repository
 
 ```text
-mobile_app/               Flutter mobile application
-  lib/main.dart           Plant dashboard preview and demo interactions
-dist/                     Earlier browser prototype kept for reference
-  index.html
-  styles.css
-  app.js                  UI, profile storage, JSON export
-  telemetry.js            Simulator and demo care rules
-contracts/telemetry.schema.json
-examples/telemetry.json
-docs/architecture.md
-docs/hardware.md
-docs/roadmap.md
-firmware/README.md        ESP32 implementation requirements
-backend/README.md         Planned API and AI integration
-.openai/hosting.json      Private Sites deployment configuration
+mobile_app/        Flutter app, device client, and tests
+firmware/         Arduino sketch, configuration, and controller test
+contracts/        Local device protocol and future cloud telemetry schema
+examples/         Example payloads
+backend/          Future backend and AI plan
+dist/             Earlier browser prototype retained for reference
 ```
 
-Start with the [roadmap](docs/roadmap.md) and [hardware details](docs/hardware.md). The [architecture](docs/architecture.md) explains the mobile app, data flow, and AI boundaries.
+The local device API is read/write HTTP only on the ESP32's private Wi-Fi. Its network password is generated per device and stored on the board; it is not embedded in the app. Android permits cleartext access only to the device address `192.168.4.1`. Cloud authentication, remote access, database history, and AI remain future stages. Keep future AI provider keys on a backend, outside the mobile app.
 
-## Development
-
-Keep Wi-Fi passwords, device credentials, database credentials, and AI keys out of Git. Use local ignored configuration for firmware and server-side secrets for the backend. Never embed a device secret or AI provider key in the mobile app.
-
-## References
-
-- [ESP32 Arduino Wi-Fi documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/wifi.html)
-- [Flutter documentation](https://docs.flutter.dev/)
-
-No open-source license has been selected yet.
+[Architecture](docs/architecture.md) · [Hardware](docs/hardware.md) · [Roadmap](docs/roadmap.md)

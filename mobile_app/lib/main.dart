@@ -1,542 +1,434 @@
 import 'package:flutter/material.dart';
+import 'device/plant_device.dart';
+import 'plant_details.dart';
 
 void main() => runApp(const PlantCareApp());
+const forest = Color(0xFF245C45);
 
 class PlantCareApp extends StatelessWidget {
-  const PlantCareApp({super.key});
-
+  const PlantCareApp({super.key, this.deviceLink});
+  final DeviceLink? deviceLink;
   @override
-  Widget build(BuildContext context) {
-    const forest = Color(0xFF245C45);
-    return MaterialApp(
-      title: 'Sprout — Plant Care',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF6F7F2),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: forest,
-          primary: forest,
-          surface: const Color(0xFFF6F7F2),
-        ),
-        fontFamily: 'Roboto',
-      ),
-      home: const PlantDashboard(),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Sprout — Plant Care',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      scaffoldBackgroundColor: const Color(0xFFF6F7F2),
+      colorScheme: ColorScheme.fromSeed(seedColor: forest, primary: forest),
+    ),
+    home: PlantDashboard(deviceLink: deviceLink),
+  );
 }
 
 class PlantDashboard extends StatefulWidget {
-  const PlantDashboard({super.key});
-
+  const PlantDashboard({super.key, this.deviceLink});
+  final DeviceLink? deviceLink;
   @override
   State<PlantDashboard> createState() => _PlantDashboardState();
 }
 
 class _PlantDashboardState extends State<PlantDashboard> {
-  int _selectedTab = 0;
-  int _moisture = 38;
-  bool _pumpRunning = false;
-
-  void _waterPlant() {
-    setState(() {
-      _pumpRunning = !_pumpRunning;
-      if (_pumpRunning) _moisture = (_moisture + 8).clamp(0, 100);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _pumpRunning
-              ? 'Demo: watering started. Hardware is not connected yet.'
-              : 'Demo: watering stopped.',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  late final DeviceLink link;
+  @override
+  void initState() {
+    super.initState();
+    link = widget.deviceLink ?? DeviceLink();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isHome = _selectedTab == 0;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F7F2),
-        titleSpacing: 22,
-        title: const Row(
-          children: [
-            Icon(Icons.eco_rounded, color: Color(0xFF245C45), size: 27),
-            SizedBox(width: 9),
-            Text('sprout', style: TextStyle(fontWeight: FontWeight.w800)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () => _showMessage('You are all caught up.'),
-            icon: const Badge(
-              smallSize: 8,
-              child: Icon(Icons.notifications_none_rounded),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 4, right: 20),
-            child: CircleAvatar(
-              radius: 17,
-              backgroundColor: Color(0xFFE3EBDD),
-              child: Icon(
-                Icons.person_outline,
-                size: 19,
-                color: Color(0xFF245C45),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: isHome ? _buildHome() : _buildPlaceholder(),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedTab,
-        onDestinationSelected: (index) => setState(() => _selectedTab = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'Overview',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.spa_outlined),
-            label: 'My plants',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            label: 'Plant AI',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_rounded),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    if (widget.deviceLink == null) link.dispose();
+    super.dispose();
   }
 
-  Widget _buildHome() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          children: [
-            const Text(
-              'Your little green corner',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Here is how your plant is doing today.',
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-            ),
-            const SizedBox(height: 19),
-            _connectionBanner(),
-            const SizedBox(height: 18),
-            _plantCard(),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _metricCard(
-                    'Moisture',
-                    '$_moisture%',
-                    Icons.water_drop_outlined,
-                    const Color(0xFFE8F2EC),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricCard(
-                    'Temperature',
-                    '24°',
-                    Icons.thermostat_rounded,
-                    const Color(0xFFF4EDE2),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _metricCard(
-                    'Humidity',
-                    '56%',
-                    Icons.air_rounded,
-                    const Color(0xFFEAF0F2),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _metricCard(
-                    'Light today',
-                    '6.2 h',
-                    Icons.wb_sunny_outlined,
-                    const Color(0xFFF5F1DF),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _careCard(),
-            const SizedBox(height: 18),
-            _wateringCard(),
-            const SizedBox(height: 18),
-            const Text(
-              'Recent activity',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 10),
-            _activityRow(
-              Icons.sensors_rounded,
-              'Sensor reading received',
-              'Soil moisture is $_moisture%',
-              'Just now',
-            ),
-            _activityRow(
-              Icons.auto_awesome_rounded,
-              'Plant care insight',
-              'Your Monstera may need a drink soon.',
-              'Today · 9:15 AM',
-            ),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      backgroundColor: const Color(0xFFF6F7F2),
+      title: const Row(
+        children: [
+          Icon(Icons.eco_rounded, color: forest),
+          SizedBox(width: 9),
+          Text('sprout', style: TextStyle(fontWeight: FontWeight.w800)),
+        ],
       ),
-    );
-  }
-
-  Widget _connectionBanner() => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8F1E9),
-      borderRadius: BorderRadius.circular(15),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.info_outline_rounded, size: 19, color: Color(0xFF245C45)),
-        SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            'Preview mode · sensor and pump hardware not connected',
-            style: TextStyle(fontSize: 12, color: Color(0xFF315A43)),
-          ),
+      actions: [
+        IconButton(
+          tooltip: 'Connection setup',
+          onPressed: setup,
+          icon: const Icon(Icons.settings_outlined),
         ),
       ],
     ),
-  );
-
-  Widget _plantCard() => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: const Color(0xFF245C45),
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: const Icon(
-            Icons.eco_rounded,
-            size: 43,
-            color: Color(0xFFE0E9B9),
-          ),
-        ),
-        const SizedBox(width: 15),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'MONSTERA DELICIOSA',
-                style: TextStyle(
-                  color: Color(0xFFC8D8C9),
-                  fontSize: 10,
-                  letterSpacing: 1.3,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: 5),
-              Text(
-                'Milo',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 23,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              SizedBox(height: 5),
-              Text(
-                'Looking pretty good today',
-                style: TextStyle(color: Color(0xFFE0E9E2), fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        const Icon(Icons.chevron_right_rounded, color: Colors.white70),
-      ],
-    ),
-  );
-
-  Widget _metricCard(String label, String value, IconData icon, Color tint) =>
-      Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(19),
-          border: Border.all(color: const Color(0xFFE9EBE5)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: tint,
-                    borderRadius: BorderRadius.circular(10),
+    body: SafeArea(
+      top: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: ListenableBuilder(
+            listenable: link,
+            builder: (context, _) => RefreshIndicator(
+              onRefresh: link.wantsConnection ? link.refresh : link.connect,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                children: [
+                  const Text(
+                    'Your plants',
+                    style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
                   ),
-                  child: Icon(icon, size: 17, color: const Color(0xFF315A43)),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.more_horiz_rounded,
-                  size: 19,
-                  color: Colors.black38,
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  const Text(
+                    'A little care, every day.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 22),
+                  connectionCard(),
+                  const SizedBox(height: 20),
+                  ...List.generate(3, plantCard),
+                  const Text(
+                    'Tap a plant to choose its type, water it, or set a schedule.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 13),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-            ),
-          ],
+          ),
         ),
-      );
+      ),
+    ),
+  );
 
-  Widget _careCard() => Container(
-    padding: const EdgeInsets.all(17),
+  Widget connectionCard() => Container(
+    padding: const EdgeInsets.all(19),
     decoration: BoxDecoration(
-      color: const Color(0xFFF0EDFA),
-      borderRadius: BorderRadius.circular(20),
+      color: forest,
+      borderRadius: BorderRadius.circular(22),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Icon(
-              Icons.auto_awesome_rounded,
-              size: 19,
-              color: Color(0xFF65559B),
+              link.connected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+              color: const Color(0xFFDDE9B9),
             ),
-            SizedBox(width: 8),
-            Text(
-              'A little plant insight',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF352D52),
-              ),
-            ),
-            Spacer(),
-            Text(
-              'AI CARE',
-              style: TextStyle(
-                fontSize: 9,
-                letterSpacing: 1.1,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF65559B),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                link.connected
+                    ? 'Your plants are connected'
+                    : link.connecting
+                    ? 'Connecting…'
+                    : link.wantsConnection
+                    ? 'Connection interrupted'
+                    : 'Let’s connect your plants',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        const Text(
-          'Milo’s soil is starting to dry. Check it again soon, and water when the top layer feels dry.',
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.45,
-            color: Color(0xFF48415F),
-          ),
-        ),
         const SizedBox(height: 9),
-        TextButton.icon(
-          onPressed: () => setState(() => _selectedTab = 2),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
+        Text(
+          link.connected
+              ? 'Readings update automatically.'
+              : link.wantsConnection
+              ? 'Trying again. Check your PlantCare Wi-Fi connection.'
+              : 'Join your PlantCare Wi-Fi, then tap Connect.',
+          style: const TextStyle(
+            color: Colors.white70,
+            height: 1.4,
+            fontSize: 13,
           ),
-          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-          label: const Text('Ask Plant AI'),
         ),
+        if (!link.connected && link.snapshot != null) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Showing saved readings, not live data.',
+            style: TextStyle(color: Color(0xFFFFD9AA), fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 12),
+        if (!link.wantsConnection)
+          FilledButton.icon(
+            onPressed: link.connect,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE5EDC8),
+              foregroundColor: forest,
+            ),
+            icon: const Icon(Icons.link_rounded, size: 18),
+            label: const Text('Connect'),
+          )
+        else
+          TextButton(
+            onPressed: setup,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: Text(
+              link.connected ? 'Connection settings' : 'Connection help',
+            ),
+          ),
       ],
     ),
   );
 
-  Widget _wateringCard() => Container(
-    padding: const EdgeInsets.all(17),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE9EBE5)),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8F2EC),
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: const Icon(Icons.water_drop_rounded, color: Color(0xFF245C45)),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Watering control',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Manual demo control · pump disconnected',
-                style: TextStyle(fontSize: 11, color: Colors.black54),
-              ),
-            ],
-          ),
-        ),
-        FilledButton(
-          onPressed: _waterPlant,
-          style: FilledButton.styleFrom(
-            backgroundColor: _pumpRunning
-                ? const Color(0xFF9A493D)
-                : const Color(0xFF245C45),
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-          ),
-          child: Text(_pumpRunning ? 'Stop' : 'Water'),
-        ),
-      ],
-    ),
-  );
-
-  Widget _activityRow(
-    IconData icon,
-    String title,
-    String subtitle,
-    String time,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 9),
-    child: Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
+  Widget plantCard(int index) {
+    final plant = link.snapshot?.plants[index];
+    final percent = plant?.percent;
+    final sensorFault =
+        plant?.faults.any((fault) => fault.startsWith('adc_')) ?? false;
+    final status = plant == null
+        ? 'Waiting for a reading'
+        : sensorFault
+        ? 'Check the soil sensor'
+        : !plant.calibrated
+        ? 'Moisture sensor needs setup'
+        : 'Soil moisture';
+    final pump = plant?.pump;
+    final watering = pump == null
+        ? 'Watering needs setup'
+        : !link.connected
+        ? 'Last command: ${pump ? 'water on' : 'water off'}'
+        : pump
+        ? 'Watering now'
+        : plant!.scheduleEnabled
+        ? 'Daily at ${plant.hour.toString().padLeft(2, '0')}:${plant.minute.toString().padLeft(2, '0')}'
+        : 'No watering schedule';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF52715D), size: 20),
-          const SizedBox(width: 11),
-          Expanded(
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => PlantDetails(link: link, index: index),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(19),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 45,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEBF0E4),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        [
+                          Icons.spa_outlined,
+                          Icons.grass_rounded,
+                          Icons.local_florist_outlined,
+                        ][index],
+                        color: forest,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            plant?.name ??
+                                speciesNames[speciesNames.keys.elementAt(
+                                  index,
+                                )]!,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'Plant ${index + 1}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.black38,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        status,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      percent == null ? '—' : '${percent.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        color: link.connected ? forest : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+                if (percent != null) ...[
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: percent / 100,
+                    minHeight: 6,
+                    borderRadius: BorderRadius.circular(4),
+                    color: link.connected ? forest : Colors.grey,
+                    backgroundColor: const Color(0xFFEBF0E4),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.water_drop_outlined,
+                      size: 16,
+                      color: Colors.black38,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        watering,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Text(
-            time,
-            style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _buildPlaceholder() {
-    final (icon, title, description) = switch (_selectedTab) {
-      1 => (
-        Icons.spa_outlined,
-        'My plants',
-        'Your plant collection and profiles will live here.',
-      ),
-      2 => (
-        Icons.auto_awesome_outlined,
-        'Plant AI',
-        'Ask questions about your plant using its care history and sensor readings.',
-      ),
-      _ => (
-        Icons.tune_rounded,
-        'Settings',
-        'Manage device connection, thresholds, and notifications.',
-      ),
-    };
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 45, color: const Color(0xFF245C45)),
-            const SizedBox(height: 13),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, height: 1.5),
-            ),
-            const SizedBox(height: 17),
-            OutlinedButton(
-              onPressed: () => setState(() => _selectedTab = 0),
-              child: const Text('Back to overview'),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-  }
+  void setup() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: ListenableBuilder(
+          listenable: link,
+          builder: (context, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Connect your plant system',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 18),
+              step(
+                '1',
+                'Power on the plant system',
+                'Upload the updated Arduino sketch first.',
+              ),
+              step(
+                '2',
+                'Join its Wi-Fi on your phone',
+                'Choose the PlantCare network. Find its password in Arduino Serial Monitor at 115200 baud. Stay connected if Android says “No internet”.',
+              ),
+              step(
+                '3',
+                'Return here and tap Connect',
+                'Your three plants will appear automatically.',
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    final disconnect = link.wantsConnection;
+                    Navigator.pop(sheetContext);
+                    if (disconnect) {
+                      link.disconnect();
+                    } else {
+                      link.connect();
+                    }
+                  },
+                  child: Text(link.wantsConnection ? 'Disconnect' : 'Connect'),
+                ),
+              ),
+              if (link.error != null)
+                ExpansionTile(
+                  title: const Text('Connection details'),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        link.error!,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget step(String number, String title, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: const Color(0xFFE8F1E9),
+          child: Text(
+            number,
+            style: const TextStyle(color: forest, fontSize: 13),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.black54,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
