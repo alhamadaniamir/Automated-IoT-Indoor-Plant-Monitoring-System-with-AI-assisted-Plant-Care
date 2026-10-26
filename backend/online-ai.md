@@ -1,49 +1,50 @@
-# Online AI without the laptop
+# Sprout over the Internet
 
-Sprout 2.1 can use a Render-hosted care service. The phone uses mobile data for Gemini/weather and stays on PlantCare Wi-Fi for readings and pump controls. The laptop and USB cable are needed only to install/configure this debug build and upload ESP32 firmware.
+Sprout 3.0 connects the phone and ESP32-S3 through the existing Render HTTPS service. The phone can use mobile data or normal Wi-Fi. The ESP32 connects to a nearby 2.4 GHz personal Wi-Fi router or hotspot; fiber, cable and mobile data can all provide that router's upstream Internet. They do not have to use the same network. The ESP32 has no built-in cellular modem. Browser-login and enterprise Wi-Fi are not supported by this setup.
 
-## One-time hosting setup
+```
+Sprout phone <--- authenticated HTTPS ---> Render <--- authenticated HTTPS ---> ESP32
+                                             |
+                                        Gemini + weather
+```
 
-1. Sign into https://dashboard.render.com/ and create a Render API key under Account Settings → API Keys.
-2. In your laptop terminal run `node backend/render-login.mjs`. Paste the Render key into the hidden prompt. It is saved with mode 0600 under `~/.config/sprout/render-auth.json`, outside Git. Keep it out of chat and screenshots.
-3. The deployment uses the plant repository's `sprout-cloud-ai` branch, with `backend` as the service root. The source must be published to that branch before deployment.
-4. Run `node backend/render.mjs deploy`. It creates only one **free** Node service in Singapore, with one instance and automatic deployments disabled. If you have several workspaces, run `node backend/render.mjs owners` and select one using `deploy --owner=WORKSPACE_ID`.
-5. Run `node backend/render.mjs status` to check the deployment. The HTTPS service address and ID are saved privately in `~/.config/sprout/render-service.json`.
-6. With your phone connected once by USB, run `node backend/pair-phone.mjs PHONE_ID --render`, then reopen Sprout. This copies only the HTTPS address and separate app access token, preserving your plant profiles and care history. It never copies the Gemini or Render management keys.
+## One-time deployment
 
-The deployment helper sends the existing Gemini key and app access token directly to Render's environment variables over HTTPS. Values are not printed. Keep all three keys private. Re-running deployment recognizes the existing matching Sprout service instead of creating duplicates; it refuses to replace a service with different settings or a paid plan.
+The private model key and app pairing already live outside Git under `~/.config/sprout`. Render management credentials are entered only through `node backend/render-login.mjs` and never copied to the phone or ESP32.
 
-## Daily use
+1. Prepare a separate device credential with `node backend/prepare-online.mjs --device=plantcare-YOUR_ID`. This preserves the app pairing and model key. The device ID is printed by the sketch; do not guess it for another board.
+2. Publish the tested backend to the repository's `sprout-cloud-ai` branch. The service root remains `backend`, Node 24, plan **free**, Singapore. No paid service is needed by this implementation.
+3. For an existing service, run `node backend/render.mjs update --commit=TESTED_PUBLISHED_SHA`. It verifies the saved service/repository/branch/free plan, adds only the device environment variables and deploys the exact reviewed commit.
+4. Check `node backend/render.mjs status` and `/health`. `online_device: true` means pairing is configured; it does not mean the physical ESP32 is online.
+5. Install the Sprout 3.0 APK without uninstalling the existing app. This preserves plant profiles, care history and its private app token. `node backend/pair-phone.mjs PHONE_ID --render` is available for a newly installed phone.
 
-- Turn on mobile data and Wi-Fi. Join the ESP32's PlantCare network and choose to stay connected when Android says it has no Internet.
-- Open Sprout and Connect for live readings. Open the AI care inbox to request advice. You can then unplug USB and turn off the laptop.
-- Android binds plant-device HTTP connections specifically to Wi-Fi, while cloud requests use a validated Internet network or request mobile data. It never binds the entire app to one network. Stop has a separate native request executor; cancelling telemetry cannot cancel or delay it behind an AI review.
-- AI watering remains a proposal requiring an explicit foreground approval. Fertilizer and light are user reminders. Reviews and notifications never start pumps.
-- Manual On/Off and device schedules remain local. They do not require Render or Gemini. Phone connectivity is still needed during manual watering for lease renewal.
+The separate device token can upload readings and receive commands for this one paired prototype board. The app token can read its status and submit user actions. Neither token is the Gemini key or the Render management key. No private value belongs in a sketch source file, Git, APK asset or chat.
 
-Render's free plan sleeps after 15 minutes without requests. Waking normally takes about a minute; Sprout allows up to three minutes for the whole care-service request. Care notifications are best-effort Android background jobs, approximately hourly, subject to battery restrictions, mobile Internet and service availability. Do not expect exact-time background notifications from free hosting.
+## Set up the ESP32 Wi-Fi
 
-This version obtains ESP32 readings through the nearby phone. It does not continuously upload readings when the phone is away or powered off. Missing or old readings result in check requests, and the cloud service has no pump endpoint. Existing schedules run on the powered ESP32 after its clock is synchronized.
+1. With pump power disconnected, upload `firmware/AutomatedIoTIndoorPlantMonitoringSystem` using ESP32-S3, 16 MB flash, octal PSRAM and USB CDC on boot. The serial startup marker is **v7: online plant connection**. Relay GPIOs remain 7/40/39; sensors remain 15/16/17.
+2. In Sprout, open connection settings and **Plant Wi-Fi setup**. While the phone has Internet, tap **Load plant pairing**. No secret is displayed.
+3. Join the ESP32's PlantCare Wi-Fi once. Its password is printed in Serial Monitor at 115200 baud. Android may ask to stay connected without Internet.
+4. Enter the router/hotspot's exact SSID and Wi-Fi password, then **Save Wi-Fi to plant system**. The app verifies the device ID before sending credentials over its WPA2-protected setup network. Credentials and the device token are saved in ESP32 NVS and not printed.
+5. Return the phone to normal Wi-Fi or mobile data and tap **Connect**. Serial Monitor should report **Internet Wi-Fi connected**, **clock ready**, then **ONLINE: Sprout can reach this device through Render**.
 
-## Render settings
+Daily use does not require joining PlantCare or keeping the laptop/USB connected. The PlantCare network remains available for changing the saved Wi-Fi later. Local API access is restricted to that setup interface, even while the ESP32 also uses a router.
 
-The supplied `render.yaml` is a manual-dashboard/Blueprint alternative. Use:
+## Readings and controls
 
-| Setting | Value |
-| --- | --- |
-| Service | Web Service, Node, Free |
-| Repository branch | `sprout-cloud-ai` |
-| Root directory | `backend` |
-| Build | `node --test test/*.test.mjs` |
-| Start | `node server.mjs` |
-| Node version | 24 |
-| Health check | `/health` |
-| `SPROUT_DEPLOYMENT` | `cloud` |
-| `SPROUT_PROVIDER` | `gemini` |
-| `SPROUT_MODEL` | `gemini-3.5-flash-lite` |
-| `GEMINI_API_KEY` | Private value entered in Render, never in source |
-| `SPROUT_APP_TOKEN` | Private app token matching the phone |
+- The ESP32 periodically uploads all three real sensor readings and controller state over certificate-verified HTTPS. TLS/DNS cannot block the independent pump control task.
+- The backend includes upload and transit age in freshness checks. Stale or missing device data displays offline rather than becoming a new live reading.
+- An app command succeeds only after the ESP32 acknowledges it. A device acknowledgement confirms handling by firmware, not measured pump flow: the system has no flow sensor.
+- Starts are not retried after a lost reply. Commands have short expiries and are bound to the current boot. Expired, duplicated and old-boot commands cannot start a pump after reconnection.
+- Water Off has a separate Android request executor and cancels unconfirmed commands for the selected plant. Stop is processed before starts in the same device sync. Internet control has network latency; it is not an emergency hardware disconnect.
+- Manual On/Off retains its local ten-second contact lease, renewed by the foreground app, with no manual cooldown. A lost app/server connection stops renewal; firmware switches the pump off when the lease expires. It never resumes by itself.
+- Daily schedules are saved on the ESP32, use AM/PM in Sprout and support 1–20 seconds. After clock synchronization, they can run without the phone or cloud. Valid sensor calibration, dry-soil checks and watering limits still apply. A power loss requires time synchronization again.
+- AI reviews remain proposals. Only a foreground user approval can request bounded AI watering. Fertilizer and light recommendations are user reminders. Notifications/background reviews never send pump commands.
 
-Render supplies `PORT`; the server listens on `0.0.0.0` for cloud operation. `/api/` routes require the private app bearer token and return JSON with caching disabled. No database is required: the phone keeps bounded care history and the server holds only temporary review/weather caches. Local laptop service configuration remains an optional development setup.
+The recorded DRY=4095 references remain display-only. Online communication does not repair the ADC range/calibration issue or enable moisture-based schedules by itself.
 
-Sources: https://render.com/docs/free · https://render.com/docs/web-services · https://render.com/docs/api · https://developer.android.com/reference/android/net/Network
+## Hosting and storage
+
+Render's free service can sleep after 15 minutes of inactivity and take about one minute to wake. The device reconnects with bounded backoff. It uploads real sensor data for monitoring; there is no dummy keepalive service. Failures/restarts drop pending commands rather than replaying them. The phone stores care history; the ESP32 stores schedules/Wi-Fi; the cloud holds only recent telemetry and short-lived commands in memory. This is a single-owner, single-device prototype, not a multi-tenant user-account service or long-term cloud history database.
+
+Sources: https://render.com/docs/free · https://docs.espressif.com/projects/arduino-esp32/en/latest/api/wifi.html · https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/protocols/esp_http_client.html

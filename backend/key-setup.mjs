@@ -19,7 +19,13 @@ export async function saveGeminiKey(input, directory) {
   const token = existing.SPROUT_APP_TOKEN || randomBytes(32).toString('hex');
   const model = existing.SPROUT_PROVIDER === 'gemini' && existing.SPROUT_MODEL
     ? existing.SPROUT_MODEL : 'gemini-3.5-flash-lite';
-  const value = 'SPROUT_PROVIDER=gemini\nSPROUT_MODEL=' + model + '\nGEMINI_API_KEY=' + key + '\nSPROUT_APP_TOKEN=' + token + '\n';
+  let value = 'SPROUT_PROVIDER=gemini\nSPROUT_MODEL=' + model + '\nGEMINI_API_KEY=' + key + '\nSPROUT_APP_TOKEN=' + token + '\n';
+  for (const name of ['SPROUT_DEVICE_ID','SPROUT_DEVICE_TOKEN']) {
+    if(existing[name]) {
+      if(!/^[A-Za-z0-9_-]{1,128}$/.test(existing[name]))throw new Error('Invalid saved device pairing. Nothing was changed.');
+      value += name+'='+existing[name]+'\n';
+    }
+  }
   const temporary = path + '.' + randomBytes(8).toString('hex') + '.tmp';
   try {
     await writeFile(temporary, value, {mode: 0o600, flag: 'wx'});

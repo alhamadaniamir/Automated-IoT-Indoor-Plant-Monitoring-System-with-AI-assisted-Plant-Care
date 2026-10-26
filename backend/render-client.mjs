@@ -11,6 +11,7 @@ export function renderService(ownerId,credentials) {
     envVars:Object.entries({NODE_VERSION:'24',SPROUT_DEPLOYMENT:'cloud',SPROUT_PROVIDER:'gemini',
       SPROUT_MODEL:credentials.SPROUT_MODEL||'gemini-3.5-flash-lite',
       GEMINI_API_KEY:credentials.GEMINI_API_KEY,SPROUT_APP_TOKEN:credentials.SPROUT_APP_TOKEN,
+      ...(credentials.SPROUT_DEVICE_TOKEN?{SPROUT_DEVICE_ID:credentials.SPROUT_DEVICE_ID,SPROUT_DEVICE_TOKEN:credentials.SPROUT_DEVICE_TOKEN}:{}),
     }).map(([key,value])=>({key,value})),
     serviceDetails:{runtime:'node',plan:'free',region:'singapore',numInstances:1,healthCheckPath:'/health',
       envSpecificDetails:{buildCommand:'node --test test/*.test.mjs',startCommand:'node server.mjs'}},

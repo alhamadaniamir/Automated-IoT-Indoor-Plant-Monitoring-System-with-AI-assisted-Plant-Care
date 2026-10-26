@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     rootDir: backend
-    buildCommand: node --check server.mjs
+    buildCommand: node --test test/*.test.mjs
     startCommand: node server.mjs
     healthCheckPath: /health
     autoDeployTrigger: off
@@ -21,4 +21,8 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: SPROUT_APP_TOKEN
+        sync: false
+      - key: SPROUT_DEVICE_ID
+        sync: false
+      - key: SPROUT_DEVICE_TOKEN
         sync: false

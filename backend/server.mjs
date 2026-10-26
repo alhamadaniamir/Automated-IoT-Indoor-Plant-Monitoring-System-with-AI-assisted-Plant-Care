@@ -9,9 +9,11 @@ import {CareError, validateInput, modelContext, validatePlan, fingerprint} from 
 import {generate,providerStatus} from './providers.mjs';
 import {weather,locations} from './weather.mjs';
 import {cloudRuntime,serverAddress} from './runtime.mjs';
+import {createDeviceRelay,authorizeDevice,deviceConfigured} from './device-relay.mjs';
 
 export function createCareServer({env=process.env,generateImpl=generate,weatherImpl=weather,locationsImpl=locations,now=Date.now}={}) {
   const cache=new Map(),pending=new Map(),reviews=new Map();
+  const relay=createDeviceRelay({env,now});
   function authorized(req) {
     const token=env.SPROUT_APP_TOKEN;
     if (!token || token.length<24) throw new CareError(503,'The care server needs its private app access token configured.');
@@ -39,9 +41,25 @@ export function createCareServer({env=process.env,generateImpl=generate,weatherI
       if (req.headers.origin) throw new CareError(403,'Use the paired Sprout mobile app.');
       const url=new URL(req.url,'http://localhost');
       if (req.method==='GET' && url.pathname==='/health') {
-        send(res,200,{service:'sprout-care',schema_version:1,deployment:cloudRuntime(env)?'cloud':'local',...providerStatus(env)});return;
+        send(res,200,{service:'sprout-care',schema_version:1,deployment:cloudRuntime(env)?'cloud':'local',online_device:deviceConfigured(env),...providerStatus(env)});return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/device/sync') {
+        authorizeDevice(req,env);send(res,200,relay.sync(await body(req)));return;
       }
       authorized(req);
+      if(url.pathname.startsWith('/api/device/')) {
+        if(!deviceConfigured(env))throw new CareError(503,'Online plant connection is not configured yet.');
+        if(req.method==='GET'&&url.pathname==='/api/device/setup') {
+          send(res,200,{device_id:env.SPROUT_DEVICE_ID,device_token:env.SPROUT_DEVICE_TOKEN});return;
+        }
+        if(req.method==='GET'&&url.pathname==='/api/device/telemetry') {
+          send(res,200,relay.telemetry());return;
+        }
+        if(req.method==='POST'&&url.pathname==='/api/device/commands') {
+          const result=await relay.command(await body(req));send(res,result.status,result.body);return;
+        }
+        throw new CareError(404,'Unknown plant endpoint.');
+      }
       if (req.method==='GET' && url.pathname==='/api/locations') {
         send(res,200,{locations:await locationsImpl(url.searchParams.get('q'))});return;
       }
@@ -76,6 +94,7 @@ export function createCareServer({env=process.env,generateImpl=generate,weatherI
   });
   server.requestTimeout=100000;
   server.headersTimeout=15000;
+  server.on('close',()=>relay.close());
   return server;
 }
 

@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,writeFile,stat,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {parseEnv} from 'node:util';
+import {prepareOnlineDevice} from '../online-setup.mjs';
+import {saveGeminiKey} from '../key-setup.mjs';
+test('device pairing is private, separate from the app, preserved by AI key rotation and cannot silently replace a board',async(t)=>{
+  const directory=await mkdtemp(join(tmpdir(),'sprout-online-'));t.after(()=>rm(directory,{recursive:true,force:true}));
+  const path=join(directory,'backend.env');await writeFile(path,'SPROUT_APP_TOKEN=private-app-token-1234567890\nGEMINI_API_KEY=private-model-key-1234567890\n');
+  await prepareOnlineDevice(directory,'plantcare-test');
+  const first=parseEnv(await readFile(path,'utf8'));
+  assert.notEqual(first.SPROUT_DEVICE_TOKEN,first.SPROUT_APP_TOKEN);
+  assert.equal((await stat(path)).mode&0o777,0o600);
+  await prepareOnlineDevice(directory,'plantcare-test');
+  assert.equal(parseEnv(await readFile(path,'utf8')).SPROUT_DEVICE_TOKEN,first.SPROUT_DEVICE_TOKEN);
+  await assert.rejects(prepareOnlineDevice(directory,'plantcare-another'),/different device/);
+  await saveGeminiKey('replacement-private-model-key-123456789',directory);
+  const updated=parseEnv(await readFile(path,'utf8'));
+  assert.equal(updated.SPROUT_DEVICE_TOKEN,first.SPROUT_DEVICE_TOKEN);assert.equal(updated.SPROUT_DEVICE_ID,'plantcare-test');
+});
