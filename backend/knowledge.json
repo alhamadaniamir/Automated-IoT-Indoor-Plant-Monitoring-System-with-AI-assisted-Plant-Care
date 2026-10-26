@@ -1,0 +1,22 @@
+{
+  "chinese_bamboo": {
+    "name": "Chinese bamboo",
+    "taxa": {
+      "lucky_bamboo": {"name": "Dracaena sanderiana", "care": "Bright indirect light; moist well-draining potting mix for soil-grown plants. Water-grown plants require a different setup. Avoid assuming a universal watering interval.", "source": "https://plants.ces.ncsu.edu/plants/dracaena-sanderiana/"},
+      "hedge_bamboo": {"name": "Bambusa multiplex", "care": "A true clumping bamboo. Confirm pot size, cultivar, placement, drainage and establishment before giving specific watering or feeding advice.", "source": "https://prosea.prota4u.org/view.aspx?id=43"}
+    }
+  },
+  "pandakaki": {
+    "name": "Pandakaki",
+    "taxa": {
+      "pandacaqui": {"name": "Tabernaemontana pandacaqui", "care": "Full sun or semi-shade, moderate water, fertile loamy soil. Indoor window exposure must be assessed separately from outdoor sunshine.", "source": "https://www.nparks.gov.sg/florafaunaweb/flora/6/3/6388"},
+      "divaricata": {"name": "Tabernaemontana divaricata", "care": "Includes the dwarf ornamental called Pandakaki in the Philippines. Confirm cultivar and growing conditions before prescribing exact care or fertilizer dosage.", "source": "https://forestry.denr.gov.ph/fmb_web/wp-content/uploads/2023/06/Philippine-Guidebook-on-Plant-Species-Suitable-for-Urban-Greening-EBOOK_compressed.pdf"}
+    }
+  },
+  "calathea": {
+    "name": "Calathea",
+    "taxa": {
+      "calathea_group": {"name": "Calathea / Goeppertia group", "care": "Bright indirect light, warm humid conditions, evenly moist but draining growing medium. Do not recommend strong direct sun. Feeding depends on active growth and the fertilizer label; do not apply UK calendar seasons to a tropical location automatically.", "source": "https://www.rhs.org.uk/plants/calathea/growing-guide"}
+    }
+  }
+}
