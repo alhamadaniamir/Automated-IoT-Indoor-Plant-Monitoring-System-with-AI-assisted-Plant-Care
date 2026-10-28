@@ -43,6 +43,8 @@ A deployed HTTPS service can be configured in the app's AI setup for use without
 
 ## Care behavior
 
+- **Plant choices:** reviews accept one to three selected pots, each independently assigned Chinese bamboo, Pandakaki or Calathea. Duplicate species are allowed across distinct pot IDs. The model uses the identity and records supplied for that pot rather than assuming species from channel order. Plans must contain exactly the requested pot IDs; extra or missing pots are rejected.
+
 - **Water:** a model may propose a 1–20 second dose, bounded by the plant's configured approval maximum (15 seconds initially). An explicit foreground Approve tap is required. Notification taps, reviews, background jobs and app restore never command a pump.
 - **Fertilizer and light:** reminders only. Both can appear together. Marking either done records the user's action; it never operates hardware.
 - **Unconfirmed identity:** Chinese bamboo and Pandakaki remain unconfirmed until the user identifies them. The service requests missing details rather than guessing a species or prescribing its care.
@@ -56,7 +58,7 @@ The app stores a bounded local history of readings and reported pump transitions
 
 - `GET /health`: service/provider/model and configuration status; no secrets.
 - `GET /api/locations?q=...`: Open-Meteo location lookup.
-- `POST /api/care/evaluate`: authenticated JSON context; returns three plant plans, model provenance, weather, source URLs, uncertainty, expiry and unique plan ID.
+- `POST /api/care/evaluate`: authenticated JSON context with one to three selected pots; returns their matching plant plans, model provenance, weather, source URLs, uncertainty, expiry and unique plan ID. Existing requests containing all three pots remain supported.
 - Care, location and app-facing device routes require `Authorization: Bearer <app-access-token>`. Device uploads use a separate device token. See [online routes](../docs/device-connection.md).
 - Model output is schema-validated and checked again against the supplied evidence. Plans expire after two hours; equivalent inputs are cached for 30 minutes and reviews are throttled per device.
 - The mobile app rejects expired/context-changed proposals and rechecks fresh device readings, boot identity and pump readiness. Approval is persisted before sending, has a 30-second request expiry, and is never retried automatically after a lost reply.

@@ -50,6 +50,27 @@ test('duplicate IDs, unbounded duration, malformed output and wrong identity are
     const output=modelOutput();change(output);assert.throws(()=>validatePlan(output,fixture(),outside));
   }
 });
+test('one or two selected pots use their chosen species rather than the channel number',()=>{
+  for (const ids of [[3],[1,3]]) {
+    const input=fixture();
+    input.plants=input.plants.filter(p=>ids.includes(p.id)).map(p=>({...p,species:'calathea',profile:{...p.profile,taxon:'calathea_group'}}));
+    validateInput(input);
+    const context=modelContext(input,outside);
+    assert.deepEqual(context.plants.map(p=>p.id),ids);
+    assert.ok(context.plants.every(p=>p.identity.name==='Calathea / Goeppertia group'));
+    const output=modelOutput();output.plants=output.plants.filter(p=>ids.includes(p.plant_id));
+    const result=validatePlan(output,input,outside);
+    assert.deepEqual(result.plants.map(p=>p.plant_id),ids);
+    assert.ok(result.plants.every(p=>p.sources[0]==='https://www.rhs.org.uk/plants/calathea/growing-guide'));
+  }
+});
+test('empty requests, unselected model output and missing selected pots are rejected',()=>{
+  const input=fixture();input.plants=[input.plants[2]];
+  assert.throws(()=>validateInput({...input,plants:[]}));
+  assert.throws(()=>validatePlan(modelOutput(),input,outside));
+  const wrong=modelOutput();wrong.plants=[wrong.plants[0]];
+  assert.throws(()=>validatePlan(wrong,input,outside));
+});
 test('missing model credentials never produce rules labeled as AI',async()=>{
   let called=false;
   await assert.rejects(generate({}, {env:{SPROUT_PROVIDER:'gemini',SPROUT_MODEL:'test'},fetchImpl:async()=>{called=true;}}),/not configured/);
