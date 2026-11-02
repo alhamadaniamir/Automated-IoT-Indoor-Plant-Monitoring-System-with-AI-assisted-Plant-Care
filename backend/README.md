@@ -88,3 +88,5 @@ Light reminders may use plant notes, indoor window placement, verified outdoor w
 ### Weather availability check
 
 Weather is requested server-side from https://api.open-meteo.com/v1/forecast. POST /api/weather with the paired app Bearer token and JSON {"location":{"name":"Cagayan de Oro","latitude":8.48222,"longitude":124.64722}} checks it independently of Gemini. Invalid locations are rejected. Unavailable results include a bounded failure_reason (HTTP status, timeout, network_error, invalid_response, invalid_data or stale_data); no provider error text or credentials are returned.
+
+Weather falls back to MET Norway Locationforecast 2.0 if Open-Meteo fails. HTTP 429 pauses primary requests for 15 minutes, and successful weather results are cached for 30 minutes. MET requests identify Sprout with its repository URL, validate forecast freshness, units and ranges, and include attribution (MET Norway, CC BY 4.0). Backup daylight comes from the hourly forecast symbol. Unprovided sunrise times and daily rain probabilities are not synthesized. Light reminders depend on the selected plant’s notes, weather and daylight; placement details are optional.

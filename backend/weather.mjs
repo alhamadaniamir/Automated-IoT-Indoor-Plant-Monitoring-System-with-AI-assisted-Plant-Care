@@ -1,6 +1,8 @@
 import {CareError} from './care.mjs';
+import {metWeather} from './met-weather.mjs';
 
 const forecasts=new Map();
+const primaryCooldown=new WeakMap();
 class WeatherSourceError extends Error {
   constructor(code) { super(code); this.code=code; }
 }
@@ -11,9 +13,9 @@ export function validateWeatherLocation(location) {
     throw new CareError(400,'Choose a valid weather location.');
   return location;
 }
-async function json(url,fetchImpl) {
+async function json(url,fetchImpl,headers) {
   let response;
-  try { response=await fetchImpl(url,{signal:AbortSignal.timeout(12000)}); }
+  try { response=await fetchImpl(url,{signal:AbortSignal.timeout(12000),...(headers?{headers}:{})}); }
   catch (error) { throw new WeatherSourceError(error?.name==='TimeoutError' || error?.name==='AbortError' ? 'timeout' : 'network_error'); }
   if (!response.ok) throw new WeatherSourceError('http_'+response.status);
   try { return await response.json(); }
@@ -28,7 +30,7 @@ export async function locations(query,{fetchImpl=fetch}={}) {
     return (data.results??[]).map(r=>({name:[r.name,r.admin1,r.country].filter(Boolean).join(', '),latitude:r.latitude,longitude:r.longitude,timezone:r.timezone}));
   } catch { throw new CareError(503,'Weather location search is unavailable. Try again later.'); }
 }
-export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
+export async function weather(location,{fetchImpl=fetch,now=Date.now(),allowFallback=true}={}) {
   validateWeatherLocation(location);
   const key=location.latitude.toFixed(3)+','+location.longitude.toFixed(3);
   const saved=forecasts.get(key);
@@ -38,6 +40,7 @@ export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
     current:'temperature_2m,relative_humidity_2m,cloud_cover,is_day',
     daily:'temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',forecast_days:'2',timezone:'auto'}).toString();
   try {
+    if ((primaryCooldown.get(fetchImpl)??0)>now) throw new WeatherSourceError('http_429');
     const data=await json(url,fetchImpl);
     const c=data.current;
     if (!c || !Number.isFinite(c.temperature_2m) || !Number.isFinite(c.relative_humidity_2m) ||
@@ -53,8 +56,23 @@ export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
     if (forecasts.size>100) forecasts.delete(forecasts.keys().next().value);
     return value;
   } catch (error) {
+    const failure=error instanceof WeatherSourceError?error.code:'invalid_data';
+    if (failure==='http_429') primaryCooldown.set(fetchImpl,now+15*60000);
+    let backupFailure;
+    if (allowFallback) {
+      try {
+        const value=await metWeather(location,{now,get:(address,headers)=>json(address,fetchImpl,headers)});
+        value.fallback_from='Open-Meteo';value.primary_failure_reason=failure;
+        forecasts.set(key,{time:now,value});
+        if (forecasts.size>100) forecasts.delete(forecasts.keys().next().value);
+        return value;
+      } catch (backup) {
+        backupFailure=backup instanceof WeatherSourceError?backup.code:
+          ['invalid_data','stale_data'].includes(backup.message)?backup.message:'invalid_data';
+      }
+    }
     return {status:'unavailable',source:'Open-Meteo',location:location.name,fetched_at:new Date(now).toISOString(),
-      failure_reason:error instanceof WeatherSourceError?error.code:'invalid_data',
+      failure_reason:failure,...(backupFailure?{fallback_source:'MET Norway',fallback_failure_reason:backupFailure}:{}),
       note:'Weather could not be verified. Do not invent weather measurements.'};
   }
 }

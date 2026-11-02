@@ -88,7 +88,7 @@ export const instructions = [
   'Fertilizer and light are notifications for the user to act on, never actuator instructions. They can both be notify for one plant.',
   'Do not infer nutrient deficiency from a soil moisture sensor or from weather. Unknown feeding history/product means check, not a made-up dose or due date.',
   'The selected common-name plant is known even when its exact botanical variety is unconfirmed. Name that selected plant and pot in each summary. Use the supplied possible identities conservatively for general advice; ask about variety only when it changes the recommendation. Do not describe a selected plant as unidentified.',
-  'Light reminders may use the selected plant, its indoor window placement, current weather and daylight without a recorded light_exposure observation. With verified weather, give a practical reminder to check or adjust suitable window light when justified. Outdoor weather cannot prove a plant is receiving too little light; do not claim a measured light deficiency. Missing light observations alone must not block a weather-based reminder. Do not prescribe direct sunlight to Calathea. Interpret growth in the selected locality.',
+  'Light reminders use the selected plant’s care requirements, verified weather and daylight or the supplied upcoming forecast. Pot placement and light_exposure observations are not required. When daytime conditions are suitable, notify the user to provide light appropriate for that plant; distinguish direct from indirect light using the plant notes. At night, explain when to wait for daytime rather than seeking sunlight immediately. Do not mark indoor light adequate merely because a pot is beside a window. Weather supports an exposure reminder, not a claim of measured indoor light deficiency. Do not prescribe direct sunlight to Calathea. Interpret growth in the selected locality.',
   'When feeding history or product is missing, explain the selected plant’s general feeding considerations from its care notes and what the user should check before feeding. Do not reduce the whole recommendation to an unknown schedule, and do not invent a due date, deficiency or fertilizer dose.',
   'If weather is unavailable, explicitly say it is unavailable; never invent current weather. Missing care history must be acknowledged.',
   'When phone_time is supplied, use its local date and clock for user-facing time references. Weather and daylight still describe the plant location; a clock is not a light measurement. At night, frame daylight tasks for an appropriate upcoming daytime period rather than telling the user to seek sunlight immediately.',
@@ -125,6 +125,7 @@ export function validatePlan(raw,input,weather,{now=Date.now(),provider='unknown
     output.missing_information=result.missing_information.slice(0,8);
     const identity=knowledge[original.species].taxa[original.profile.taxon];
     output.sources=identity?[identity.source]:Object.values(knowledge[original.species].taxa).map(t=>t.source);
+    if (weather.status==='available') output.sources.push(...[weather.source_url,weather.license_url].filter(s=>typeof s==='string'));
     output.profile_fingerprint=fingerprint(original.profile);
     output.reading_at_review=original.reading?{raw:original.reading.raw,percent:original.reading.percent,boot_id:original.reading.boot_id}:null;
     return output;
