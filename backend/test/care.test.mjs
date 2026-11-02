@@ -38,11 +38,28 @@ test('model cannot override faulty, stale, missing or uncalibrated soil data',()
     assert.equal(plan.plants[1].water.decision,'water');
   }
 });
-test('watering and feeding keep their guards while missing light observations allow reminders',()=>{
+test('watering guards remain while optional feeding history and light observations allow reminders',()=>{
   const input=fixture();input.plants[0].profile.taxon='';input.plants[1].profile.last_fertilized_at='';input.plants[2].profile.light_exposure='';
   const plan=validatePlan(modelOutput(),input,outside);
   assert.equal(plan.plants[0].water.decision,'check');assert.equal(plan.plants[0].light.decision,'notify');
-  assert.equal(plan.plants[1].fertilizer.decision,'check');assert.equal(plan.plants[2].light.decision,'notify');
+  assert.equal(plan.plants[1].fertilizer.decision,'notify');assert.equal(plan.plants[2].light.decision,'notify');
+});
+test('starter fertilizer advice works for every selected pot without fabricating a feeding record',()=>{
+  const input=fixture();
+  input.plants.forEach(p=>{p.profile.last_fertilized_at='';p.profile.fertilizer='';});
+  const before=structuredClone(input);
+  const context=modelContext(validateInput(input),outside);
+  assert.ok(context.plants.every(p=>p.feeding_context.guidance_mode==='starter' &&
+    p.feeding_context.history_recorded===false && p.feeding_context.product_recorded===false));
+  const output=modelOutput();
+  const plan=validatePlan(output,input,outside);
+  assert.ok(plan.plants.every(p=>p.fertilizer.decision==='notify'));
+  assert.deepEqual(input,before);
+  input.plants[1].profile.last_fertilized_at='2026-11-01T00:00:00Z';
+  const later=modelContext(input,outside);
+  assert.equal(later.plants[0].feeding_context.guidance_mode,'starter');
+  assert.equal(later.plants[1].feeding_context.guidance_mode,'history_aware');
+  assert.equal(later.plants[2].feeding_context.guidance_mode,'starter');
 });
 test('duplicate IDs, unbounded duration, malformed output and wrong identity are rejected',()=>{
   const input=fixture();input.plants[0].profile.taxon='divaricata';assert.throws(()=>validateInput(input));

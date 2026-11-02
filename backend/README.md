@@ -50,7 +50,7 @@ A deployed HTTPS service can be configured in the app's AI setup for use without
 - **Water:** a model may propose a 1–20 second dose, bounded by the plant's configured approval maximum (15 seconds initially). An explicit foreground Approve tap is required. Notification taps, reviews, background jobs and app restore never command a pump.
 - **Fertilizer and light:** reminders only. Both can appear together. Marking either done records the user's action; it never operates hardware.
 - **Unconfirmed identity:** Chinese bamboo and Pandakaki remain unconfirmed until the user identifies them. The service requests missing details rather than guessing a species or prescribing its care.
-- **Missing evidence:** absent/stale/faulty/clipped/uncalibrated soil readings cannot produce an actionable water proposal. Missing feeding history/product or light observations produce a check request rather than an unsupported fertilizer/light action.
+- **Missing evidence:** absent/stale/faulty/clipped/uncalibrated soil readings cannot produce an actionable water proposal. Feeding history/product and light observations are optional for general care reminders. Missing history never authorizes a fabricated feeding date, overdue claim, nutrient diagnosis or product dose.
 - **Notifications:** opt in from AI setup. Android schedules reviews approximately hourly with network access, subject to battery restrictions. Delivery is not exact-time. Advice also appears in the care inbox. Offline service failures never create fake advice.
 - **Boundaries:** the care-evaluation route and Android background worker never issue watering commands. A separate authenticated relay forwards explicit foreground user actions to the ESP32 and waits for device confirmation.
 
@@ -81,7 +81,7 @@ The existing Render service now supports the paired ESP32's readings, commands a
 
 ### Selected pots and light reminders
 
-Each review includes every selected pot with its own common-name species, sensor and care history. An unconfirmed botanical variety does not erase the selected common name: Gemini receives the selected name and the library’s possible botanical identities for conservative general care. Exact variety and fresh calibrated soil data still gate approval-watering proposals. Feeding product and history are required before claiming feeding is due.
+Each review includes every selected pot with its own common-name species, sensor and care history. An unconfirmed botanical variety does not erase the selected common name: Gemini receives the selected name and the library’s possible botanical identities for conservative general care. Exact variety and fresh calibrated soil data still gate approval-watering proposals. Fertilizer starter guidance is available without a previous feeding record. Recorded feeding dates improve later follow-up reminders; no overdue claim or product dose is invented.
 
 Light reminders may use plant notes, indoor window placement, verified outdoor weather and phone-local daylight context without a recorded indoor light observation. They are reminders to check or adjust suitable window light, not measurements of indoor light deficiency. Calathea must not be prescribed strong direct sunlight. Missing weather must be disclosed; it cannot support a weather-specific claim.
 
@@ -90,3 +90,7 @@ Light reminders may use plant notes, indoor window placement, verified outdoor w
 Weather is requested server-side from https://api.open-meteo.com/v1/forecast. POST /api/weather with the paired app Bearer token and JSON {"location":{"name":"Cagayan de Oro","latitude":8.48222,"longitude":124.64722}} checks it independently of Gemini. Invalid locations are rejected. Unavailable results include a bounded failure_reason (HTTP status, timeout, network_error, invalid_response, invalid_data or stale_data); no provider error text or credentials are returned.
 
 Weather falls back to MET Norway Locationforecast 2.0 if Open-Meteo fails. HTTP 429 pauses primary requests for 15 minutes, and successful weather results are cached for 30 minutes. MET requests identify Sprout with its repository URL, validate forecast freshness, units and ranges, and include attribution (MET Norway, CC BY 4.0). Backup daylight comes from the hourly forecast symbol. Unprovided sunrise times and daily rain probabilities are not synthesized. Light reminders depend on the selected plant’s notes, weather and daylight; placement details are optional.
+
+### Fertilizer starter guidance
+
+Each pot receives plant-specific starter advice when no feeding date is recorded. The model receives an explicit starter/history-aware context. An empty feeding record remains empty; app setup does not count as fertilization, planting or proof the plant has never been fed. Optional product details and user-recorded feeding events can refine future advice. Fertilizer advice remains a user notification and cannot operate a pump.
