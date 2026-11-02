@@ -72,7 +72,9 @@ export function createCareServer({env=process.env,generateImpl=generate,weatherI
       const input=validateInput(await body(req));
       const phoneClock=input.phone_time;
       const key=fingerprint({provider:env.SPROUT_PROVIDER,model:env.SPROUT_MODEL,device:input.device_id,revision:input.context_revision,location:input.location,
+        timed_care:input.supports_timed_care===true,
         phone_offset:phoneClock?.utc_offset_minutes??null,
+        phone_window:phoneClock?Math.floor(phoneClock.utc_epoch_seconds/600):null,
         phone_date:phoneClock?new Date((phoneClock.utc_epoch_seconds+phoneClock.utc_offset_minutes*60)*1000).toISOString().slice(0,10):null,
         plants:input.plants.map(p=>({
         id:p.id,species:p.species,profile:p.profile,history:p.history.slice(-8),

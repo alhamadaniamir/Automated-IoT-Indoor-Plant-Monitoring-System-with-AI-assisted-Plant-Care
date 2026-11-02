@@ -98,3 +98,9 @@ Each pot receives plant-specific starter advice when no feeding date is recorded
 ### Recorded care actions
 
 Optional profile fields last_watered_at and last_light_adjusted_at join last_fertilized_at. They retain each selected plant instance’s last user-reported action when the bounded reading history rolls over. The AI receives these timestamps with that pot’s history and should consider recent completion before recommending another action. User reports and controller start/stop events do not measure water volume. Old clients without these fields remain supported. No record action invokes a pump route.
+
+### Dated AI suggestions
+
+Clients send supports_timed_care: true to request model-selected remind_at (ISO 8601), reminder_kind (care or check), and timing_basis per task. Older clients retain immediate advice. Future times require a basis and must be one minute to 60 days ahead. Future watering is a moisture check, never authorization to run a pump. Light claims outside available forecast coverage become daylight checks. No exact time is fabricated from a user example. Reviews are cached within 10-minute phone-clock windows so dated advice can refresh.
+
+The Android app schedules dated notification-only alarms and separately supports accelerated TEST previews of the actual AI suggestions. Reminder data contains no credentials. Completion dates and plant-instance changes invalidate stale alarms. Pump approval continues to require fresh inputs and explicit user action.

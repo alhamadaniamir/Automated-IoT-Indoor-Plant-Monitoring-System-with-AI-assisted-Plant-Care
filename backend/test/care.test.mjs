@@ -6,7 +6,7 @@ import {weather} from '../weather.mjs';
 import {createCareServer} from '../server.mjs';
 
 export function fixture() {
-  return {device_id:'plantcare-test',context_revision:1,location:{name:'Cagayan de Oro, Philippines',latitude:8.48222,longitude:124.64722},
+  return {device_id:'plantcare-test',context_revision:1,supports_timed_care:true,location:{name:'Cagayan de Oro, Philippines',latitude:8.48222,longitude:124.64722},
     plants:['chinese_bamboo','pandakaki','calathea'].map((species,i)=>({id:i+1,species,
       profile:{taxon:['lucky_bamboo','pandacaqui','calathea_group'][i],placement:'Indoors beside a window',light_exposure:'Filtered morning light',soil_mix:'Draining potting mix',pot_size_cm:'15',fertilizer:'User-recorded product label',last_fertilized_at:'2026-09-01T00:00:00Z',max_water_seconds:15},
       reading:{raw:3000,percent:20,calibrated:true,faults:[],age_ms:10,boot_id:'boot-test'},history:[],
@@ -17,6 +17,41 @@ export function modelOutput() {
   return {plants:[1,2,3].map(plant_id=>({plant_id,water:{...task,decision:'water',seconds:15},fertilizer:{...task},light:{...task},missing_information:[]}))};
 }
 const outside={status:'available',source:'test-weather',observed_at:new Date().toISOString()};
+test('AI times preserve UTC offsets and future watering remains a check',()=>{
+  const now=Date.UTC(2026,10,3,0);
+  const output=modelOutput();
+  for (const p of output.plants) for (const task of ['water','fertilizer','light'])
+    Object.assign(p[task],{remind_at:'2026-11-03T15:33:00+08:00',reminder_kind:'care',timing_basis:'Forecast daylight window.'});
+  const forecast={...outside,hourly:[{time:'2026-11-03T08:00:00Z'}]};
+  const plan=validatePlan(output,fixture(),forecast,{now});
+  assert.equal(plan.plants[0].light.remind_at,'2026-11-03T07:33:00.000Z');
+  assert.equal(plan.plants[0].light.reminder_kind,'care');
+  assert.equal(plan.plants[0].water.reminder_kind,'check');
+  assert.match(plan.plants[0].water.summary,/soil moisture/);
+});
+test('older app versions cannot silently receive future actions as immediate alerts',()=>{
+  const input=fixture();delete input.supports_timed_care;
+  const output=modelOutput();Object.assign(output.plants[0].light,{remind_at:'2026-11-03T15:33:00+08:00',reminder_kind:'care',timing_basis:'Test'});
+  assert.equal(modelContext(validateInput(input),outside).timed_reminders_supported,false);
+  assert.equal(validatePlan(output,input,outside).plants[0].light.remind_at,null);
+  assert.throws(()=>validateInput({...fixture(),supports_timed_care:1}));
+});
+test('invalid, past, excessive or unexplained AI reminder dates are rejected',()=>{
+  const now=Date.UTC(2026,10,3,0);
+  for(const remind_at of ['tomorrow','2026-11-02T00:00:00Z','2027-11-03T00:00:00Z',123]) {
+    const output=modelOutput();Object.assign(output.plants[0].light,{remind_at,reminder_kind:'care',timing_basis:'Test'});
+    assert.throws(()=>validatePlan(output,fixture(),outside,{now}));
+  }
+  const output=modelOutput();Object.assign(output.plants[0].light,{remind_at:'2026-11-03T01:00:00Z',timing_basis:''});
+  assert.throws(()=>validatePlan(output,fixture(),outside,{now}));
+});
+test('a light time beyond the verified forecast becomes a daylight check rather than a sunshine claim',()=>{
+  const now=Date.UTC(2026,10,3,0), output=modelOutput();
+  Object.assign(output.plants[0].light,{remind_at:'2026-11-05T07:33:00Z',reminder_kind:'care',timing_basis:'Test suggestion'});
+  const result=validatePlan(output,fixture(),{...outside,hourly:[{time:'2026-11-03T02:00:00Z'}]},{now});
+  assert.equal(result.plants[0].light.reminder_kind,'check');
+  assert.match(result.plants[0].light.timing_basis,/does not cover/);
+});
 
 test('all three species can receive combined care tasks; watering stays a proposal',()=>{
   const input=validateInput(fixture());

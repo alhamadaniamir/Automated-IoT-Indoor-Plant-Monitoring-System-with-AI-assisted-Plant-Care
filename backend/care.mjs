@@ -10,6 +10,8 @@ const text = {type:'string'};
 const decision = (options, water=false) => object({
   decision:{type:'string',enum:options},summary:text,reason:text,
   confidence:{type:'string',enum:['low','medium','high']},
+  remind_at:{type:['string','null']},
+  reminder_kind:{type:'string',enum:['care','check']},timing_basis:text,
   ...(water ? {seconds:{type:['integer','null']}} : {}),
 });
 export const outputSchema = object({plants:{type:'array',minItems:1,maxItems:3,items:object({
@@ -23,6 +25,7 @@ export function validateInput(input) {
       input.device_id.length>100 || !Array.isArray(input.plants) || input.plants.length<1 || input.plants.length>3)
     throw new CareError(400,'Choose between one and three plants and send their device ID.');
   if (!Number.isInteger(input.context_revision) || input.context_revision<0) throw new CareError(400,'Invalid care history revision.');
+  if (input.supports_timed_care!==undefined && typeof input.supports_timed_care!=='boolean') throw new CareError(400,'Invalid timed care capability.');
   if (input.phone_time != null && (!Number.isInteger(input.phone_time.utc_epoch_seconds) ||
       input.phone_time.utc_epoch_seconds<1735689600 || input.phone_time.utc_epoch_seconds>2145916799 ||
       !Number.isInteger(input.phone_time.utc_offset_minutes) || input.phone_time.utc_offset_minutes < -720 ||
@@ -67,7 +70,7 @@ export function modelContext(input, weather) {
   const zone=clock?sign+String(Math.floor(Math.abs(offset)/60)).padStart(2,'0')+':'+String(Math.abs(offset)%60).padStart(2,'0'):null;
   const phoneTime=clock?{source:'phone',...clock,
     local_datetime:new Date((clock.utc_epoch_seconds+offset*60)*1000).toISOString().slice(0,19)+zone}:null;
-  return {location:input.location,weather,phone_time:phoneTime,plants:input.plants.map(p=>({
+  return {location:input.location,weather,phone_time:phoneTime,timed_reminders_supported:input.supports_timed_care===true,plants:input.plants.map(p=>({
     ...p,history:p.history.slice(-40),
     selected_plant:knowledge[p.species].name,
     feeding_context:{
@@ -97,6 +100,12 @@ export const instructions = [
   'For feeding_context.guidance_mode=starter, provide a useful starter fertilizer advisory for the selected plant from the supplied plant notes. Use notify for actionable guidance the user can review, without claiming feeding is due today. Do not require the user to supply a previous feeding date to receive this advice, and do not answer only with feeding schedule unknown or add feeding history. Product instructions can guide any later application; do not invent a dose when the product is unknown. When the user records a feeding later, use that recorded history for follow-up reminders. Treat unrecorded history as optional context, not a prerequisite in missing_information.',
   'The profile timestamps last_watered_at, last_fertilized_at and last_light_adjusted_at record actions the user reported for this specific pot and plant. Use these timestamps and matching history when deciding whether the user should act now or wait. A water_started/water_stopped event reports controller state, not measured water flow or volume. Do not count adjacent controller events and a user-reported watering as separate measured doses. A recent reported watering should prompt allowing soil to settle and checking the current calibrated reading, not repeating a watering proposal solely because the previous plan asked for water. Do not repeat fertilizer or light tasks merely because a previous review recommended them; consider the recorded completion, plant needs, current local time and weather. Never infer a universal next-care interval from these timestamps alone.',
   'Use fertilizer/light decision=ok when the advice only acknowledges completed care, confirms a recorded action or says to wait. Do not use notify just to announce that feeding history was recorded: notify means there is a new action for the user. If the user has just fertilized and there is no evidence another feeding is due, say to wait and monitor with decision=ok rather than prompting more fertilizer.',
+  'Write short direct summaries, ideally under 100 characters: the action or current status, naming the plant. Do not say prepare, starter guidance, review guidance, or offer vague instructions to get ready. Reasons can explain the evidence separately.',
+  'Choose remind_at yourself when a future reminder is useful, as an ISO 8601 timestamp with Z or an explicit UTC offset. Use the phone clock for practical local timing. The app will notify at that time. Leave remind_at null for an immediate need or when no future time is justified. Never repeat example times as if they were evidence. Choose practical future reminders at least five minutes and at most 60 days ahead.',
+  'Only return future remind_at values when timed_reminders_supported is true. Older apps cannot schedule them: leave remind_at null and give appropriate current advice for those clients.',
+  'reminder_kind=care means a supported care suggestion; reminder_kind=check means reassess the plant then. Explain the timing in timing_basis, including uncertainty. Use forecast daylight and cloud conditions for light reminders, without claiming minute-precise guaranteed sunshine. Do not extend a weather-specific claim past the supplied forecast. Suggest light appropriate to each plant, such as indirect daylight for Calathea.',
+  'Future watering cannot be proved from nice weather alone. If no current calibrated moisture evidence supports watering, you may choose a useful next moisture-check time with reminder_kind=check; do not claim the pump should run then. Actual watering still requires a fresh reading and user approval.',
+  'For fertilizer, choose a future care suggestion only when supported by plant notes and recorded care. Without a reliable feeding interval or history, you may schedule a first feeding-needs check with reminder_kind=check; do not invent a fertilizer due date or product dose. Recent completed care must affect the next suggested time. Include a concise timing_basis rather than asking the user to prepare.',
   'If weather is unavailable, explicitly say it is unavailable; never invent current weather. Missing care history must be acknowledged.',
   'When phone_time is supplied, use its local date and clock for user-facing time references. Weather and daylight still describe the plant location; a clock is not a light measurement. At night, frame daylight tasks for an appropriate upcoming daytime period rather than telling the user to seek sunlight immediately.',
   'Each pot can contain any supported species, including the same species in several pots. Use each pot’s selected species, confirmed identity, own sensor and own history. Never assume plant 1 is bamboo, plant 2 Pandakaki or plant 3 Calathea.',
@@ -115,15 +124,36 @@ export function validatePlan(raw,input,weather,{now=Date.now(),provider='unknown
     const output={plant_id:result.plant_id};
     for (const task of ['water','fertilizer','light']) {
       const d=result[task], allowed=task==='water'?['water','wait','check']:['notify','ok','check'];
-      if (!d || !allowed.includes(d.decision) || typeof d.summary!=='string' || d.summary.length>160 ||
+      if (!d || !allowed.includes(d.decision) || typeof d.summary!=='string' || !d.summary.trim() || d.summary.length>160 ||
           typeof d.reason!=='string' || d.reason.length>1200 || !['low','medium','high'].includes(d.confidence)) failOutput();
       output[task]={decision:d.decision,summary:d.summary,reason:d.reason,confidence:d.confidence};
+      const reminderAt=input.supports_timed_care===true?(d.remind_at??null):null;
+      const reminderKind=d.reminder_kind??'check';
+      const timingBasis=d.timing_basis??'';
+      if (!['care','check'].includes(reminderKind) || typeof timingBasis!=='string' || timingBasis.length>400) failOutput();
+      if (reminderAt!==null && (typeof reminderAt!=='string' ||
+          !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(reminderAt) ||
+          !Number.isFinite(Date.parse(reminderAt)) || Date.parse(reminderAt)<now+60000 ||
+          Date.parse(reminderAt)>now+60*86400000 || !timingBasis.trim())) failOutput();
       if (task==='water') {
         if (d.decision==='water' && (!Number.isInteger(d.seconds) || d.seconds<1 || d.seconds>original.profile.max_water_seconds || d.seconds>20)) failOutput();
         output.water.seconds=d.decision==='water'?d.seconds:null;
         // Model output is not an authority to bypass missing, stale or faulted inputs.
         if (!wateringEligible(original)) output.water={decision:'check',summary:original.reading ? `Check ${knowledge[original.species].name} watering inputs` : `${knowledge[original.species].name}: connect the soil sensor`,reason:!original.reading ? `Pot ${original.id} is set to ${knowledge[original.species].name}. A current soil reading is missing, so watering need cannot be assessed yet.` : !original.profile.taxon ? `Pot ${original.id} is set to ${knowledge[original.species].name}. Confirm its exact variety before approving an AI watering proposal; general care can still use the selected plant.` : `Pot ${original.id} needs a recent, calibrated, fault-free moisture reading before AI watering approval. Manual On/Off remains available.`,confidence:'low',seconds:null};
       }
+      let kind=reminderKind, basis=timingBasis;
+      if (task==='water' && reminderAt!==null) kind='check';
+      if (task==='light' && reminderAt!==null && reminderKind==='care') {
+        const times=(weather.hourly??[]).map(e=>Date.parse(e.time)).filter(Number.isFinite);
+        const horizon=times.length?Math.max(...times)+3600000:
+          weather.status==='available'&&weather.daily?.time?.length?now+24*3600000:now;
+        if (Date.parse(reminderAt)>horizon) {
+          kind='check';basis=('Recheck daylight then; the verified forecast does not cover that time. '+basis).slice(0,400);
+        }
+      }
+      Object.assign(output[task],{remind_at:reminderAt===null?null:new Date(reminderAt).toISOString(),reminder_kind:kind,timing_basis:basis});
+      if (task==='water' && reminderAt!==null) output.water.summary=`Check ${knowledge[original.species].name} soil moisture.`;
+      if (task==='light' && reminderAt!==null && kind==='check' && reminderKind==='care') output.light.summary=`Check suitable daylight for ${knowledge[original.species].name}.`;
     }
     if (!Array.isArray(result.missing_information) || result.missing_information.some(t=>typeof t!=='string'||t.length>240)) failOutput();
     output.missing_information=result.missing_information.slice(0,8);
