@@ -69,7 +69,12 @@ export function modelContext(input, weather) {
     local_datetime:new Date((clock.utc_epoch_seconds+offset*60)*1000).toISOString().slice(0,19)+zone}:null;
   return {location:input.location,weather,phone_time:phoneTime,plants:input.plants.map(p=>({
     ...p,history:p.history.slice(-40),
-    identity:knowledge[p.species].taxa[p.profile.taxon] ?? {name:'UNCONFIRMED',care:'Ask the user to identify this plant. Do not guess the species.'},
+    selected_plant:knowledge[p.species].name,
+    identity:knowledge[p.species].taxa[p.profile.taxon] ?? {
+      name:knowledge[p.species].name,botanical_identity_confirmed:false,
+      care:'The user has selected this common-name plant for this pot. Use that selection for general care. Exact variety is unconfirmed; do not silently choose a botanical identity or give variety-specific doses or fixed watering intervals.',
+      possible_identities:Object.values(knowledge[p.species].taxa),
+    },
     water_request_allowed:wateringEligible(p),
   }))};
 }
@@ -82,7 +87,9 @@ export const instructions = [
   'Do not guess actual water volume from pump seconds. Respect the user-configured max_water_seconds, at most 20. No universal species-specific ADC threshold or unmeasured watering volume.',
   'Fertilizer and light are notifications for the user to act on, never actuator instructions. They can both be notify for one plant.',
   'Do not infer nutrient deficiency from a soil moisture sensor or from weather. Unknown feeding history/product means check, not a made-up dose or due date.',
-  'Unknown plant identity or light placement means ask for details. Do not prescribe direct sunlight to Calathea. Interpret seasons and growth in the selected locality.',
+  'The selected common-name plant is known even when its exact botanical variety is unconfirmed. Name that selected plant and pot in each summary. Use the supplied possible identities conservatively for general advice; ask about variety only when it changes the recommendation. Do not describe a selected plant as unidentified.',
+  'Light reminders may use the selected plant, its indoor window placement, current weather and daylight without a recorded light_exposure observation. With verified weather, give a practical reminder to check or adjust suitable window light when justified. Outdoor weather cannot prove a plant is receiving too little light; do not claim a measured light deficiency. Missing light observations alone must not block a weather-based reminder. Do not prescribe direct sunlight to Calathea. Interpret growth in the selected locality.',
+  'When feeding history or product is missing, explain the selected plant’s general feeding considerations from its care notes and what the user should check before feeding. Do not reduce the whole recommendation to an unknown schedule, and do not invent a due date, deficiency or fertilizer dose.',
   'If weather is unavailable, explicitly say it is unavailable; never invent current weather. Missing care history must be acknowledged.',
   'When phone_time is supplied, use its local date and clock for user-facing time references. Weather and daylight still describe the plant location; a clock is not a light measurement. At night, frame daylight tasks for an appropriate upcoming daytime period rather than telling the user to seek sunlight immediately.',
   'Each pot can contain any supported species, including the same species in several pots. Use each pot’s selected species, confirmed identity, own sensor and own history. Never assume plant 1 is bamboo, plant 2 Pandakaki or plant 3 Calathea.',
@@ -108,19 +115,16 @@ export function validatePlan(raw,input,weather,{now=Date.now(),provider='unknown
         if (d.decision==='water' && (!Number.isInteger(d.seconds) || d.seconds<1 || d.seconds>original.profile.max_water_seconds || d.seconds>20)) failOutput();
         output.water.seconds=d.decision==='water'?d.seconds:null;
         // Model output is not an authority to bypass missing, stale or faulted inputs.
-        if (!wateringEligible(original)) output.water={decision:'check',summary:'Check moisture readings first',reason:'AI watering requires a confirmed plant identity and a recent, calibrated, fault-free sensor reading. Manual On/Off remains separate.',confidence:'low',seconds:null};
+        if (!wateringEligible(original)) output.water={decision:'check',summary:original.reading ? `Check ${knowledge[original.species].name} watering inputs` : `${knowledge[original.species].name}: connect the soil sensor`,reason:!original.reading ? `Pot ${original.id} is set to ${knowledge[original.species].name}. A current soil reading is missing, so watering need cannot be assessed yet.` : !original.profile.taxon ? `Pot ${original.id} is set to ${knowledge[original.species].name}. Confirm its exact variety before approving an AI watering proposal; general care can still use the selected plant.` : `Pot ${original.id} needs a recent, calibrated, fault-free moisture reading before AI watering approval. Manual On/Off remains available.`,confidence:'low',seconds:null};
       }
-      if (!original.profile.taxon && output[task].decision==='notify') output[task]={decision:'check',summary:'Confirm this plant first',reason:'Choose its botanical identity before receiving species-specific care instructions.',confidence:'low'};
       if (task==='fertilizer' && output[task].decision==='notify' &&
           (!original.profile.fertilizer || !Number.isFinite(Date.parse(original.profile.last_fertilized_at))))
-        output[task]={decision:'check',summary:'Add feeding details',reason:'Record the last feeding and fertilizer product before deciding that feeding is due.',confidence:'low'};
-      if (task==='light' && output[task].decision==='notify' && !original.profile.light_exposure)
-        output[task]={decision:'check',summary:'Describe the window light',reason:'Outdoor weather does not measure the light reaching this indoor plant.',confidence:'low'};
+        output[task]={decision:'check',summary:`Review ${knowledge[original.species].name} feeding`,reason:`Pot ${original.id} is set to ${knowledge[original.species].name}. Record its last feeding and fertilizer product before deciding that feeding is due.`,confidence:'low'};
     }
     if (!Array.isArray(result.missing_information) || result.missing_information.some(t=>typeof t!=='string'||t.length>240)) failOutput();
     output.missing_information=result.missing_information.slice(0,8);
     const identity=knowledge[original.species].taxa[original.profile.taxon];
-    output.sources=identity?[identity.source]:[];
+    output.sources=identity?[identity.source]:Object.values(knowledge[original.species].taxa).map(t=>t.source);
     output.profile_fingerprint=fingerprint(original.profile);
     output.reading_at_review=original.reading?{raw:original.reading.raw,percent:original.reading.percent,boot_id:original.reading.boot_id}:null;
     return output;

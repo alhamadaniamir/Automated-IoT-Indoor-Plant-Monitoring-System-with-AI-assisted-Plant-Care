@@ -78,3 +78,9 @@ Tests use mocked model/weather responses plus a real local HTTP test server. The
 ## Online plant controls (Sprout 3.0)
 
 The existing Render service now supports the paired ESP32's readings, commands and device confirmations over HTTPS. See [Internet setup](online-ai.md). `online_device` on `/health` reports configuration only; a fresh upload is required before control requests are accepted. Use `prepare-online.mjs --device=DEVICE_ID` and `render.mjs update --commit=SHA` for the existing free service. The model, app and device use separate credentials.
+
+### Selected pots and light reminders
+
+Each review includes every selected pot with its own common-name species, sensor and care history. An unconfirmed botanical variety does not erase the selected common name: Gemini receives the selected name and the library’s possible botanical identities for conservative general care. Exact variety and fresh calibrated soil data still gate approval-watering proposals. Feeding product and history are required before claiming feeding is due.
+
+Light reminders may use plant notes, indoor window placement, verified outdoor weather and phone-local daylight context without a recorded indoor light observation. They are reminders to check or adjust suitable window light, not measurements of indoor light deficiency. Calathea must not be prescribed strong direct sunlight. Missing weather must be disclosed; it cannot support a weather-specific claim.

@@ -38,11 +38,11 @@ test('model cannot override faulty, stale, missing or uncalibrated soil data',()
     assert.equal(plan.plants[1].water.decision,'water');
   }
 });
-test('unconfirmed identity, missing feed history and missing light observations remain checks',()=>{
+test('watering and feeding keep their guards while missing light observations allow reminders',()=>{
   const input=fixture();input.plants[0].profile.taxon='';input.plants[1].profile.last_fertilized_at='';input.plants[2].profile.light_exposure='';
   const plan=validatePlan(modelOutput(),input,outside);
-  assert.equal(plan.plants[0].water.decision,'check');assert.equal(plan.plants[0].light.decision,'check');
-  assert.equal(plan.plants[1].fertilizer.decision,'check');assert.equal(plan.plants[2].light.decision,'check');
+  assert.equal(plan.plants[0].water.decision,'check');assert.equal(plan.plants[0].light.decision,'notify');
+  assert.equal(plan.plants[1].fertilizer.decision,'check');assert.equal(plan.plants[2].light.decision,'notify');
 });
 test('duplicate IDs, unbounded duration, malformed output and wrong identity are rejected',()=>{
   const input=fixture();input.plants[0].profile.taxon='divaricata';assert.throws(()=>validateInput(input));
@@ -129,4 +129,21 @@ test('HTTP care route requires app auth, caches reviews, and exposes no pump rou
   const first=await send('/api/care/evaluate',true,fixture());assert.equal(first.status,200);const a=await first.json();
   const second=await send('/api/care/evaluate',true,fixture());assert.equal((await second.json()).plan_id,a.plan_id);assert.equal(calls,1);
   assert.equal((await send('/api/water',true,{})).status,404);
+});
+
+test('all three pots retain their chosen names and species notes when varieties are unknown',()=>{
+  const input=fixture();
+  const choices=['calathea','chinese_bamboo','pandakaki'];
+  input.plants.forEach((p,i)=>{p.species=choices[i];p.profile.taxon='';p.profile.light_exposure='';p.reading=null;});
+  const context=modelContext(validateInput(input),outside);
+  assert.deepEqual(context.plants.map(p=>p.selected_plant),['Calathea','Chinese bamboo','Pandakaki']);
+  assert.deepEqual(context.plants.map(p=>p.identity.name),context.plants.map(p=>p.selected_plant));
+  assert.ok(context.plants.every(p=>p.identity.possible_identities.length>0));
+  const plan=validatePlan(modelOutput(),input,outside);
+  plan.plants.forEach((p,i)=>{
+    assert.equal(p.water.decision,'check');
+    assert.ok(p.water.summary.includes(context.plants[i].selected_plant));
+    assert.equal(p.light.decision,'notify');
+    assert.ok(p.sources.length>0);
+  });
 });
