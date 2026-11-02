@@ -43,6 +43,8 @@ A deployed HTTPS service can be configured in the app's AI setup for use without
 
 ## Care behavior
 
+- **Phone clock:** clients may supply `phone_time` with `utc_epoch_seconds` and `utc_offset_minutes`. Validated phone date/time enters the Gemini context separately from the plant's weather location. Cache keys separate local dates and timezone offsets; older clients remain supported. A phone clock does not measure indoor daylight.
+
 - **Plant choices:** reviews accept one to three selected pots, each independently assigned Chinese bamboo, Pandakaki or Calathea. Duplicate species are allowed across distinct pot IDs. The model uses the identity and records supplied for that pot rather than assuming species from channel order. Plans must contain exactly the requested pot IDs; extra or missing pots are rejected.
 
 - **Water:** a model may propose a 1–20 second dose, bounded by the plant's configured approval maximum (15 seconds initially). An explicit foreground Approve tap is required. Notification taps, reviews, background jobs and app restore never command a pump.

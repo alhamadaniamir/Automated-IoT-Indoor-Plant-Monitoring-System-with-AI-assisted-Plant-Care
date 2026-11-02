@@ -23,6 +23,10 @@ export function validateInput(input) {
       input.device_id.length>100 || !Array.isArray(input.plants) || input.plants.length<1 || input.plants.length>3)
     throw new CareError(400,'Choose between one and three plants and send their device ID.');
   if (!Number.isInteger(input.context_revision) || input.context_revision<0) throw new CareError(400,'Invalid care history revision.');
+  if (input.phone_time != null && (!Number.isInteger(input.phone_time.utc_epoch_seconds) ||
+      input.phone_time.utc_epoch_seconds<1735689600 || input.phone_time.utc_epoch_seconds>2145916799 ||
+      !Number.isInteger(input.phone_time.utc_offset_minutes) || input.phone_time.utc_offset_minutes < -720 ||
+      input.phone_time.utc_offset_minutes > 840)) throw new CareError(400,'Invalid phone clock context.');
   const location=input.location;
   if (!location || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude) ||
       Math.abs(location.latitude)>90 || Math.abs(location.longitude)>180 || typeof location.name!=='string')
@@ -57,7 +61,13 @@ export function wateringEligible(p) {
 }
 
 export function modelContext(input, weather) {
-  return {location:input.location,weather,plants:input.plants.map(p=>({
+  const clock=input.phone_time;
+  const offset=clock?.utc_offset_minutes;
+  const sign=offset<0?'-':'+';
+  const zone=clock?sign+String(Math.floor(Math.abs(offset)/60)).padStart(2,'0')+':'+String(Math.abs(offset)%60).padStart(2,'0'):null;
+  const phoneTime=clock?{source:'phone',...clock,
+    local_datetime:new Date((clock.utc_epoch_seconds+offset*60)*1000).toISOString().slice(0,19)+zone}:null;
+  return {location:input.location,weather,phone_time:phoneTime,plants:input.plants.map(p=>({
     ...p,history:p.history.slice(-40),
     identity:knowledge[p.species].taxa[p.profile.taxon] ?? {name:'UNCONFIRMED',care:'Ask the user to identify this plant. Do not guess the species.'},
     water_request_allowed:wateringEligible(p),
@@ -74,6 +84,7 @@ export const instructions = [
   'Do not infer nutrient deficiency from a soil moisture sensor or from weather. Unknown feeding history/product means check, not a made-up dose or due date.',
   'Unknown plant identity or light placement means ask for details. Do not prescribe direct sunlight to Calathea. Interpret seasons and growth in the selected locality.',
   'If weather is unavailable, explicitly say it is unavailable; never invent current weather. Missing care history must be acknowledged.',
+  'When phone_time is supplied, use its local date and clock for user-facing time references. Weather and daylight still describe the plant location; a clock is not a light measurement. At night, frame daylight tasks for an appropriate upcoming daytime period rather than telling the user to seek sunlight immediately.',
   'Each pot can contain any supported species, including the same species in several pots. Use each pot’s selected species, confirmed identity, own sensor and own history. Never assume plant 1 is bamboo, plant 2 Pandakaki or plant 3 Calathea.',
   'Return exactly the supplied plant IDs once each; do not add unselected pots. Explain whether care is needed now, should wait, or needs a user check, using current local context. Never invent a precise future care time from insufficient evidence.',
   'Include short, plain-English summaries, reasons, honest confidence, and missing information. No diagnoses or claims of measured data that were not provided.',

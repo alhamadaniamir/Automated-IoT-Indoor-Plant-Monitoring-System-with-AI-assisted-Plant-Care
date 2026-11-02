@@ -71,6 +71,26 @@ test('empty requests, unselected model output and missing selected pots are reje
   const wrong=modelOutput();wrong.plants=[wrong.plants[0]];
   assert.throws(()=>validatePlan(wrong,input,outside));
 });
+test('Gemini context uses the phone clock across local midnight and fractional offsets',()=>{
+  const input=fixture();
+  input.phone_time={utc_epoch_seconds:Date.UTC(2026,10,2,16,5)/1000,utc_offset_minutes:480};
+  validateInput(input);
+  assert.equal(modelContext(input,outside).phone_time.local_datetime,'2026-11-03T00:05:00+08:00');
+  input.phone_time.utc_offset_minutes=-330;
+  assert.equal(modelContext(input,outside).phone_time.local_datetime,'2026-11-02T10:35:00-05:30');
+  input.phone_time.utc_offset_minutes=345;
+  assert.equal(modelContext(input,outside).phone_time.local_datetime,'2026-11-02T21:50:00+05:45');
+  delete input.phone_time;
+  assert.equal(modelContext(input,outside).phone_time,null);
+});
+test('invalid phone timestamps or offsets cannot become care timing instructions',()=>{
+  for (const phone_time of [
+    {utc_epoch_seconds:'tomorrow',utc_offset_minutes:480},
+    {utc_epoch_seconds:Date.UTC(2026,10,2)/1000,utc_offset_minutes:841},
+    {utc_epoch_seconds:0,utc_offset_minutes:480},
+    {utc_epoch_seconds:Date.UTC(2026,10,2)/1000,utc_offset_minutes:480.5},
+  ]) assert.throws(()=>validateInput({...fixture(),phone_time}));
+});
 test('missing model credentials never produce rules labeled as AI',async()=>{
   let called=false;
   await assert.rejects(generate({}, {env:{SPROUT_PROVIDER:'gemini',SPROUT_MODEL:'test'},fetchImpl:async()=>{called=true;}}),/not configured/);

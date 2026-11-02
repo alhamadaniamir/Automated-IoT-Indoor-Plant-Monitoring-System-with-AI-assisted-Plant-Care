@@ -66,7 +66,11 @@ export function createCareServer({env=process.env,generateImpl=generate,weatherI
       if (req.method!=='POST' || url.pathname!=='/api/care/evaluate') throw new CareError(404,'Unknown care endpoint.');
       if (generateImpl===generate && !providerStatus(env).configured) throw new CareError(503,'Live AI is not configured. Add the model provider key to the care service; no AI recommendation has been generated.');
       const input=validateInput(await body(req));
-      const key=fingerprint({provider:env.SPROUT_PROVIDER,model:env.SPROUT_MODEL,device:input.device_id,revision:input.context_revision,location:input.location,plants:input.plants.map(p=>({
+      const phoneClock=input.phone_time;
+      const key=fingerprint({provider:env.SPROUT_PROVIDER,model:env.SPROUT_MODEL,device:input.device_id,revision:input.context_revision,location:input.location,
+        phone_offset:phoneClock?.utc_offset_minutes??null,
+        phone_date:phoneClock?new Date((phoneClock.utc_epoch_seconds+phoneClock.utc_offset_minutes*60)*1000).toISOString().slice(0,10):null,
+        plants:input.plants.map(p=>({
         id:p.id,species:p.species,profile:p.profile,history:p.history.slice(-8),
         reading:p.reading?{bucket:Math.floor((p.reading.percent??-10)/10),faults:p.reading.faults,
           eligible:p.reading.age_ms<=120000,calibrated:p.reading.calibrated,boot:p.reading.boot_id}:null,
