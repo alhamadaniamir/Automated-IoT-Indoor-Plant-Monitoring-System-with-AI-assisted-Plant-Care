@@ -61,6 +61,19 @@ test('starter fertilizer advice works for every selected pot without fabricating
   assert.equal(later.plants[1].feeding_context.guidance_mode,'history_aware');
   assert.equal(later.plants[2].feeding_context.guidance_mode,'starter');
 });
+test('user-reported water and light timestamps reach the AI on their own pot and old clients still work',()=>{
+  const input=fixture();
+  validateInput(input);
+  input.plants[0].profile.last_watered_at='2026-11-02T20:00:00Z';
+  input.plants[1].profile.last_light_adjusted_at='2026-11-02T21:00:00Z';
+  input.plants[0].history.push({kind:'watered',at:input.plants[0].profile.last_watered_at,source:'user_reported'});
+  const context=modelContext(validateInput(input),outside);
+  assert.equal(context.plants[0].profile.last_watered_at,'2026-11-02T20:00:00Z');
+  assert.equal(context.plants[1].profile.last_watered_at,undefined);
+  assert.equal(context.plants[1].profile.last_light_adjusted_at,'2026-11-02T21:00:00Z');
+  assert.equal(context.plants[0].history[0].source,'user_reported');
+  assert.equal('command' in context.plants[0],false);
+});
 test('duplicate IDs, unbounded duration, malformed output and wrong identity are rejected',()=>{
   const input=fixture();input.plants[0].profile.taxon='divaricata';assert.throws(()=>validateInput(input));
   for(const change of [r=>r.plants[0].water.seconds=21,r=>r.plants[1].plant_id=1,r=>r.plants[0].light.decision='switch_relay']){

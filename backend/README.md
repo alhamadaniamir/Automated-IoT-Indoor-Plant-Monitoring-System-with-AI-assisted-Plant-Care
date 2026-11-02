@@ -94,3 +94,7 @@ Weather falls back to MET Norway Locationforecast 2.0 if Open-Meteo fails. HTTP 
 ### Fertilizer starter guidance
 
 Each pot receives plant-specific starter advice when no feeding date is recorded. The model receives an explicit starter/history-aware context. An empty feeding record remains empty; app setup does not count as fertilization, planting or proof the plant has never been fed. Optional product details and user-recorded feeding events can refine future advice. Fertilizer advice remains a user notification and cannot operate a pump.
+
+### Recorded care actions
+
+Optional profile fields last_watered_at and last_light_adjusted_at join last_fertilized_at. They retain each selected plant instance’s last user-reported action when the bounded reading history rolls over. The AI receives these timestamps with that pot’s history and should consider recent completion before recommending another action. User reports and controller start/stop events do not measure water volume. Old clients without these fields remain supported. No record action invokes a pump route.
