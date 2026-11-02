@@ -84,3 +84,7 @@ The existing Render service now supports the paired ESP32's readings, commands a
 Each review includes every selected pot with its own common-name species, sensor and care history. An unconfirmed botanical variety does not erase the selected common name: Gemini receives the selected name and the library’s possible botanical identities for conservative general care. Exact variety and fresh calibrated soil data still gate approval-watering proposals. Feeding product and history are required before claiming feeding is due.
 
 Light reminders may use plant notes, indoor window placement, verified outdoor weather and phone-local daylight context without a recorded indoor light observation. They are reminders to check or adjust suitable window light, not measurements of indoor light deficiency. Calathea must not be prescribed strong direct sunlight. Missing weather must be disclosed; it cannot support a weather-specific claim.
+
+### Weather availability check
+
+Weather is requested server-side from https://api.open-meteo.com/v1/forecast. POST /api/weather with the paired app Bearer token and JSON {"location":{"name":"Cagayan de Oro","latitude":8.48222,"longitude":124.64722}} checks it independently of Gemini. Invalid locations are rejected. Unavailable results include a bounded failure_reason (HTTP status, timeout, network_error, invalid_response, invalid_data or stale_data); no provider error text or credentials are returned.

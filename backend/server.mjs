@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CareError, validateInput, modelContext, validatePlan, fingerprint} from './care.mjs';
 import {generate,providerStatus} from './providers.mjs';
-import {weather,locations} from './weather.mjs';
+import {weather,locations,validateWeatherLocation} from './weather.mjs';
 import {cloudRuntime,serverAddress} from './runtime.mjs';
 import {createDeviceRelay,authorizeDevice,deviceConfigured} from './device-relay.mjs';
 
@@ -62,6 +62,10 @@ export function createCareServer({env=process.env,generateImpl=generate,weatherI
       }
       if (req.method==='GET' && url.pathname==='/api/locations') {
         send(res,200,{locations:await locationsImpl(url.searchParams.get('q'))});return;
+      }
+      if (req.method==='POST' && url.pathname==='/api/weather') {
+        const location=validateWeatherLocation((await body(req)).location);
+        send(res,200,await weatherImpl(location));return;
       }
       if (req.method!=='POST' || url.pathname!=='/api/care/evaluate') throw new CareError(404,'Unknown care endpoint.');
       if (generateImpl===generate && !providerStatus(env).configured) throw new CareError(503,'Live AI is not configured. Add the model provider key to the care service; no AI recommendation has been generated.');

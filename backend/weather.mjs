@@ -1,10 +1,23 @@
 import {CareError} from './care.mjs';
 
 const forecasts=new Map();
+class WeatherSourceError extends Error {
+  constructor(code) { super(code); this.code=code; }
+}
+export function validateWeatherLocation(location) {
+  if (!location || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude) ||
+      Math.abs(location.latitude)>90 || Math.abs(location.longitude)>180 ||
+      typeof location.name!=='string' || !location.name.trim() || location.name.length>200)
+    throw new CareError(400,'Choose a valid weather location.');
+  return location;
+}
 async function json(url,fetchImpl) {
-  const response=await fetchImpl(url,{signal:AbortSignal.timeout(12000)});
-  if (!response.ok) throw new Error('weather service unavailable');
-  return response.json();
+  let response;
+  try { response=await fetchImpl(url,{signal:AbortSignal.timeout(12000)}); }
+  catch (error) { throw new WeatherSourceError(error?.name==='TimeoutError' || error?.name==='AbortError' ? 'timeout' : 'network_error'); }
+  if (!response.ok) throw new WeatherSourceError('http_'+response.status);
+  try { return await response.json(); }
+  catch { throw new WeatherSourceError('invalid_response'); }
 }
 export async function locations(query,{fetchImpl=fetch}={}) {
   if (typeof query!=='string' || query.trim().length<2 || query.length>100) throw new CareError(400,'Enter a city name.');
@@ -16,6 +29,7 @@ export async function locations(query,{fetchImpl=fetch}={}) {
   } catch { throw new CareError(503,'Weather location search is unavailable. Try again later.'); }
 }
 export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
+  validateWeatherLocation(location);
   const key=location.latitude.toFixed(3)+','+location.longitude.toFixed(3);
   const saved=forecasts.get(key);
   if (saved && now-saved.time<30*60*1000 && now-Date.parse(saved.value.observed_at)<=3*60*60*1000) return saved.value;
@@ -27,10 +41,10 @@ export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
     const data=await json(url,fetchImpl);
     const c=data.current;
     if (!c || !Number.isFinite(c.temperature_2m) || !Number.isFinite(c.relative_humidity_2m) ||
-        !Number.isFinite(c.cloud_cover) || c.relative_humidity_2m<0 || c.relative_humidity_2m>100 || c.cloud_cover<0 || c.cloud_cover>100 || ![0,1].includes(c.is_day)) throw new Error('invalid weather');
+        !Number.isFinite(c.cloud_cover) || c.relative_humidity_2m<0 || c.relative_humidity_2m>100 || c.cloud_cover<0 || c.cloud_cover>100 || ![0,1].includes(c.is_day)) throw new WeatherSourceError('invalid_data');
     // API timestamps are local to the returned timezone; use the response offset.
     const measuredAt=Date.parse(c.time+'Z')-(data.utc_offset_seconds??0)*1000;
-    if (!Number.isFinite(measuredAt) || Math.abs(now-measuredAt)>3*60*60*1000) throw new Error('stale weather');
+    if (!Number.isFinite(measuredAt) || Math.abs(now-measuredAt)>3*60*60*1000) throw new WeatherSourceError('stale_data');
     const value={status:'available',source:'Open-Meteo',location:location.name,
       fetched_at:new Date(now).toISOString(),observed_at:new Date(measuredAt).toISOString(),
       temperature_c:c.temperature_2m,humidity_pct:c.relative_humidity_2m,cloud_cover_pct:c.cloud_cover,
@@ -38,8 +52,9 @@ export async function weather(location,{fetchImpl=fetch,now=Date.now()}={}) {
     forecasts.set(key,{time:now,value});
     if (forecasts.size>100) forecasts.delete(forecasts.keys().next().value);
     return value;
-  } catch {
+  } catch (error) {
     return {status:'unavailable',source:'Open-Meteo',location:location.name,fetched_at:new Date(now).toISOString(),
+      failure_reason:error instanceof WeatherSourceError?error.code:'invalid_data',
       note:'Weather could not be verified. Do not invent weather measurements.'};
   }
 }
