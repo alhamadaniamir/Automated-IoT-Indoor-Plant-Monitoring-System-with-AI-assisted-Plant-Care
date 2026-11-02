@@ -29,6 +29,14 @@ test('AI times preserve UTC offsets and future watering remains a check',()=>{
   assert.equal(plan.plants[0].water.reminder_kind,'check');
   assert.match(plan.plants[0].water.summary,/soil moisture/);
 });
+test('generic preparation headings use the same AI explanation as a direct plant-specific summary',()=>{
+  const output=modelOutput();
+  output.plants[2].fertilizer.summary='Review starter feeding guidance';
+  output.plants[2].fertilizer.reason='Check feeding needs during active growth. Follow the product label before application.';
+  const result=validatePlan(output,fixture(),outside);
+  assert.equal(result.plants[2].fertilizer.summary,'Calathea: Check feeding needs during active growth.');
+  assert.equal(result.plants[2].fertilizer.reason,output.plants[2].fertilizer.reason);
+});
 test('older app versions cannot silently receive future actions as immediate alerts',()=>{
   const input=fixture();delete input.supports_timed_care;
   const output=modelOutput();Object.assign(output.plants[0].light,{remind_at:'2026-11-03T15:33:00+08:00',reminder_kind:'care',timing_basis:'Test'});
