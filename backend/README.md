@@ -103,4 +103,6 @@ Optional profile fields last_watered_at and last_light_adjusted_at join last_fer
 
 Clients send supports_timed_care: true to request model-selected remind_at (ISO 8601), reminder_kind (care or check), and timing_basis per task. Older clients retain immediate advice. Future times require a basis and must be one minute to 60 days ahead. Future watering is a moisture check, never authorization to run a pump. Light claims outside available forecast coverage become daylight checks. No exact time is fabricated from a user example. Reviews are cached within 10-minute phone-clock windows so dated advice can refresh.
 
-The Android app schedules dated notification-only alarms and separately supports accelerated TEST previews of the actual AI suggestions. Reminder data contains no credentials. Completion dates and plant-instance changes invalidate stale alarms. Pump approval continues to require fresh inputs and explicit user action.
+The Android app schedules dated notification-only alarms and can announce the actual upcoming suggestions immediately without shifting their due dates. Reminder data contains no credentials. Completion dates and plant-instance changes invalidate stale alarms. Pump approval continues to require fresh inputs and explicit user action.
+
+Bright-light recommendations prefer established morning daylight supported by the forecast. An early/late day flag alone becomes a conditions check, not confident exposure advice. Indoor brightness remains unmeasured.

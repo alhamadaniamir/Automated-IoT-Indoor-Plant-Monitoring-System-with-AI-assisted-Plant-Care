@@ -29,6 +29,14 @@ test('AI times preserve UTC offsets and future watering remains a check',()=>{
   assert.equal(plan.plants[0].water.reminder_kind,'check');
   assert.match(plan.plants[0].water.summary,/soil moisture/);
 });
+test('early day flags cannot become confident bright-light exposure advice at 6 AM',()=>{
+  const now=Date.UTC(2026,10,2,20), input=fixture(), output=modelOutput();
+  input.phone_time={utc_epoch_seconds:now/1000,utc_offset_minutes:480};
+  Object.assign(output.plants[2].light,{remind_at:'2026-11-03T06:00:00+08:00',reminder_kind:'care',timing_basis:'The day flag is true.'});
+  const result=validatePlan(output,input,{...outside,hourly:[{time:'2026-11-03T02:00:00Z',is_day:true}]},{now});
+  assert.equal(result.plants[2].light.reminder_kind,'check');
+  assert.match(result.plants[2].light.timing_basis,/does not establish adequate brightness/);
+});
 test('generic preparation headings use the same AI explanation as a direct plant-specific summary',()=>{
   const output=modelOutput();
   output.plants[2].fertilizer.summary='Review starter feeding guidance';

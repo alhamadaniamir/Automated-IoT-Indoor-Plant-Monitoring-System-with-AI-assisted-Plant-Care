@@ -104,6 +104,7 @@ export const instructions = [
   'Choose remind_at yourself when a future reminder is useful, as an ISO 8601 timestamp with Z or an explicit UTC offset. Use the phone clock for practical local timing. The app will notify at that time. Leave remind_at null for an immediate need or when no future time is justified. Never repeat example times as if they were evidence. Choose practical future reminders at least five minutes and at most 60 days ahead.',
   'Only return future remind_at values when timed_reminders_supported is true. Older apps cannot schedule them: leave remind_at null and give appropriate current advice for those clients.',
   'Select practical daytime hours for routine future watering or feeding checks, normally 8 AM to 6 PM in the phone timezone. Do not carry the current nighttime hour/minute/second into a date next week. Choose a deliberate daytime clock time and zero seconds. Light reminders must follow forecast daylight, and their summary should specify the light type from the plant notes rather than merely say provide suitable light.',
+  'A day/night forecast flag is not a brightness measurement. For bright indirect daylight recommendations, prefer established morning daylight, generally around 8–10 AM local time when the forecast supports it, rather than the first daylight hour such as 6 AM. Do not claim that sunrise or nice weather guarantees sufficient indoor brightness. The light time is a practical exposure suggestion, not a measured light-quality result.',
   'reminder_kind=care means a supported care suggestion; reminder_kind=check means reassess the plant then. Explain the timing in timing_basis, including uncertainty. Use forecast daylight and cloud conditions for light reminders, without claiming minute-precise guaranteed sunshine. Do not extend a weather-specific claim past the supplied forecast. Suggest light appropriate to each plant, such as indirect daylight for Calathea.',
   'Future watering cannot be proved from nice weather alone. If no current calibrated moisture evidence supports watering, you may choose a useful next moisture-check time with reminder_kind=check; do not claim the pump should run then. Actual watering still requires a fresh reading and user approval.',
   'For fertilizer, choose a future care suggestion only when supported by plant notes and recorded care. When timed reminders are supported, each selected plant should have a useful next feeding follow-up date: if an actual feeding due date is uncertain, choose a feeding-needs check with reminder_kind=check, not an unsupported feeding instruction. Choose the check date yourself from plant notes and recent care; it is a monitoring appointment, not proof of nutrient need. Recent feeding should move that follow-up appropriately later. Include a concise timing_basis. A scheduled summary must describe the action or check at that future time rather than acknowledge a past action.',
@@ -150,6 +151,13 @@ export function validatePlan(raw,input,weather,{now=Date.now(),provider='unknown
           weather.status==='available'&&weather.daily?.time?.length?now+24*3600000:now;
         if (Date.parse(reminderAt)>horizon) {
           kind='check';basis=('Recheck daylight then; the verified forecast does not cover that time. '+basis).slice(0,400);
+        }
+        const offset=input.phone_time?.utc_offset_minutes;
+        if (Number.isInteger(offset)) {
+          const hour=new Date(Date.parse(reminderAt)+offset*60000).getUTCHours();
+          if (hour<8 || hour>=18) {
+            kind='check';basis=('Daylight alone does not establish adequate brightness at this early or late hour; check conditions. '+basis).slice(0,400);
+          }
         }
       }
       Object.assign(output[task],{remind_at:reminderAt===null?null:new Date(reminderAt).toISOString(),reminder_kind:kind,timing_basis:basis});
